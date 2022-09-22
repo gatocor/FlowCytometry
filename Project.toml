@@ -1,0 +1,11 @@
+name = "FlowCytometry"
+uuid = "dda4a566-a714-4635-9e97-d7f3f719a55d"
+authors = ["gatocor <g.torregrosa@outlook.com>"]
+version = "0.1.0"
+
+[deps]
+DataFrames = "a93c6f00-e57d-5684-b7b6-d8193f3e46c0"
+FCSFiles = "d76558cf-badf-52d4-a17e-381ab0b0d937"
+FileIO = "5789e2e9-d7fb-5bc7-8068-2c6fae9b9549"
+JLD = "4138dd39-2aa7-5051-a626-17a0bb65d9c8"
+Test = "8dfed614-e22c-5e08-85e1-65c5234f0b40"
