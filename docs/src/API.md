@@ -28,3 +28,17 @@ loadFCExperiment
 ```@docs
 isInsideGate
 ```
+
+## Dimensionaity reduction
+
+```@docs
+DimensionalityReduction.pca!
+DimensionalityReduction.umap!
+```
+## Clustering
+
+```@docs
+Clustering.KMeans!
+Clustering.KMeansTuning
+Clustering.Hierarchical!
+```

@@ -11,7 +11,7 @@ Function that loads a ftc experiment into a FlowCytometryExperiment.
 """
 function loadFCExperiment(file::String)
 
-    flow = load(file)
+    flow = FileIO.load(file)
 
     channels = [i for i in keys(flow.data)]
     var = DataFrame(:channel=>channels)
