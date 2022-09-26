@@ -38,7 +38,7 @@ DimensionalityReduction.umap!
 ## Clustering
 
 ```@docs
-Clustering.KMeans!
-Clustering.KMeansTuning
-Clustering.Hierarchical!
+Clustering.kmeans!
+Clustering.kmeansTuning
+Clustering.agglomerative!
 ```

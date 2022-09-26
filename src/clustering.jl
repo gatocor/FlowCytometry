@@ -2,9 +2,12 @@ module Clustering
 
     using FlowCytometry, MLJ
 
+    kmeans_ = MLJ.@load KMeans pkg=ScikitLearn
+    agglomerative_ = MLJ.@load AgglomerativeClustering pkg=ScikitLearn
+
 """
-    function KMeansTuning(fct::FlowCytometryExperiment,
-                            n_clusters::Vector{Int}; 
+    function kmeansTuning(fct::FlowCytometryExperiment;
+                            n_clusters::Vector{Int};,
                             n_init::Int = 10, 
                             max_iter::Int = 300, 
                             tol::Real = 0.0001, 
@@ -22,9 +25,9 @@ A plot of clusters vs inertia can help to choose the optimal number of clusters 
 
 **Arguments**
  - **fct::FlowCytometryExperiment** FlowCytometryExperiment to cluster the data.
- - **n_clusters::Vector{Int}** Vector with the n of cluster partitions to be tested.
 
 **Keyword Arguments**
+ - **n_clusters::Vector{Int}** Vector with the n of cluster partitions to be tested.
  - **n_init::Int = 10** Number of initialisations of the algorithm.
  - **max_iter::Int = 300** Maximum number of steps.
  - **tol::Real = 0.0001** Tolerance step before stopping the algorithm.
@@ -40,8 +43,8 @@ A plot of clusters vs inertia can help to choose the optimal number of clusters 
 **Returns**
  - Vector with the inertia coeficients for the the different number of clusters checked.
 """
-    function KMeansTuning(fct::FlowCytometryExperiment,
-                            n_clusters::Vector{Int}; 
+    function kmeansTuning(fct::FlowCytometryExperiment;
+                            n_clusters::Vector{Int},
                             n_init::Int = 10, 
                             max_iter::Int = 300, 
                             tol::Real = 0.0001, 
@@ -56,7 +59,7 @@ A plot of clusters vs inertia can help to choose the optimal number of clusters 
 
         if key_obsm !== nothing && key_used_channels !== nothing
             error("key_obsm and key_used_channels cannot be specified at the same time.")
-        elseif key_osbm !== nothing
+        elseif key_obsm !== nothing
             if n_components !== nothing
                 X = fct.obsm[key_obsm][:,1:n_components]
             else
@@ -74,13 +77,11 @@ A plot of clusters vs inertia can help to choose the optimal number of clusters 
                 X = fct.X
             end
         end
-        
-        KMeans = MLJ.@load KMeans pkg=ScikitLearn
 
         inertia = zeros(length(n_clusters))
         for (i,clusters) in enumerate(n_clusters)
-            model = KMeans(
-                        n_clusters=n_clusters, 
+            model = kmeans_(
+                        n_clusters=clusters, 
                         n_init=n_init, 
                         max_iter=max_iter, 
                         tol=tol, 
@@ -92,14 +93,14 @@ A plot of clusters vs inertia can help to choose the optimal number of clusters 
                         )
             mach = machine(model,X,scitype_check_level=0)
             fit!(mach)
-            inertia[i] = fitted_params(mach2)[3]
+            inertia[i] = fitted_params(mach)[3]
         end
         
         return inertia
     end
 
 """
-    function KMeans!(fct::FlowCytometryExperiment;
+    function kmeans!(fct::FlowCytometryExperiment;
                       n_clusters::Int = 2, 
                       n_init::Int = 10, 
                       max_iter::Int = 300, 
@@ -139,7 +140,7 @@ To help asses the number of clusters you can use **KMeansTuning** function.
 **Returns**
  Nothing. To the FlowCytometryExperiment object provided, clusters identities are added to the .obs[key_added] and information of the algorithm if included in .uns[key_added].
 """
-    function KMeans!(fct::FlowCytometryExperiment;
+    function kmeans!(fct::FlowCytometryExperiment;
                         n_clusters::Int = 2, 
                         n_init::Int = 10, 
                         max_iter::Int = 300, 
@@ -149,14 +150,14 @@ To help asses the number of clusters you can use **KMeansTuning** function.
                         copy_x::Bool = true, 
                         algorithm::String = "auto", 
                         init::String = "k-means++",
-                        key_added::String = "KMeans",
+                        key_added::String = "kmeans",
                         key_obsm::Union{Nothing,String} = nothing,
                         n_components::Union{Nothing,Int} = nothing,
                         key_used_channels::Union{Nothing,String} = nothing)
 
         if key_obsm !== nothing && key_used_channels !== nothing
             error("key_obsm and key_used_channels cannot be specified at the same time.")
-        elseif key_osbm !== nothing
+        elseif key_obsm !== nothing
             if n_components !== nothing
                 X = fct.obsm[key_obsm][:,1:n_components]
             else
@@ -175,8 +176,7 @@ To help asses the number of clusters you can use **KMeansTuning** function.
             end
         end
         
-        KMeans = MLJ.@load KMeans pkg=ScikitLearn
-        model = KMeans(
+        model = kmeans_(
                     n_clusters=n_clusters, 
                     n_init=n_init, 
                     max_iter=max_iter, 
@@ -193,15 +193,15 @@ To help asses the number of clusters you can use **KMeansTuning** function.
 
         fct.uns[key_added] = Dict([
                                 "params"=>Dict([i=>j for (i,j) in zip(keys(params(mach)),params(mach))]),
-                                "cluster_centers"=>fitted_params(mach2)[1],
-                                "inertia"=>fitted_params(mach2)[3],
+                                "cluster_centers"=>fitted_params(mach)[1],
+                                "inertia"=>fitted_params(mach)[3],
                                 ])
         
         return
     end
 
 """
-    function Hierarchical!(fct::FlowCytometryExperiment;
+    function agglomerative!(fct::FlowCytometryExperiment;
         n_clusters::Int = 2, 
         affinity::String = "euclidean", 
         compute_full_tree::Union{String,Bool} = "auto", 
@@ -232,7 +232,7 @@ Function that clusters the data using the AgglomerativeClustering algorithm.
 **Returns**
  Nothing. To the FlowCytometryExperiment object provided, clusters identities are added to the .obs[key_added] and information of the algorithm if included in .uns[key_added].
 """
-    function Hierarchical!(fct::FlowCytometryExperiment;
+    function agglomerative!(fct::FlowCytometryExperiment;
                             n_clusters = 2, 
                             affinity = "euclidean", 
                             memory = nothing, 
@@ -247,7 +247,7 @@ Function that clusters the data using the AgglomerativeClustering algorithm.
 
         if key_obsm !== nothing && key_used_channels !== nothing
             error("key_obsm and key_used_channels cannot be specified at the same time.")
-        elseif key_osbm !== nothing
+        elseif key_obsm !== nothing
             if n_components !== nothing
                 X = fct.obsm[key_obsm][:,1:n_components]
             else
@@ -266,8 +266,7 @@ Function that clusters the data using the AgglomerativeClustering algorithm.
             end
         end
         
-        Hierarchical = MLJ.@load AgglomerativeClustering pkg=ScikitLearn
-        model = Hierarchical(
+        model = agglomerative_(
                     n_clusters = n_clusters, 
                     affinity = affinity, 
                     memory = memory, 
@@ -278,14 +277,14 @@ Function that clusters the data using the AgglomerativeClustering algorithm.
                     )
         mach = machine(model,X,scitype_check_level=0)
         fit!(mach)
-        fct.obs[:,key_added] = predict(mach)
+        fct.obs[:,key_added] = fitted_params(mach)[2]
 
         fct.uns[key_added] = Dict([
                                 "params"=>Dict([i=>j for (i,j) in zip(keys(params(mach)),params(mach))]),
-                                "n_clusters"=>fitted_params(mach2)[1],
-                                "n_leaves"=>fitted_params(mach2)[3],
-                                "n_connected_components"=>fitted_params(mach2)[4],
-                                "children"=>fitted_params(mach2)[5],
+                                "n_clusters"=>fitted_params(mach)[1],
+                                "n_leaves"=>fitted_params(mach)[3],
+                                "n_connected_components"=>fitted_params(mach)[4],
+                                "children"=>fitted_params(mach)[5],
                                 ])
         
         return
