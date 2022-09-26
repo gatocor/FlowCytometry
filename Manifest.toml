@@ -73,6 +73,12 @@ git-tree-sha1 = "eb4cb44a499229b3b8426dcfb5dd85333951ff90"
 uuid = "fa961155-64e5-5f13-b03f-caf6b980ea82"
 version = "0.4.2"
 
+[[CSV]]
+deps = ["CodecZlib", "Dates", "FilePathsBase", "InlineStrings", "Mmap", "Parsers", "PooledArrays", "SentinelArrays", "Tables", "Unicode", "WeakRefStrings"]
+git-tree-sha1 = "873fb188a4b9d76549b81465b1f75c82aaf59238"
+uuid = "336ed68f-0bac-5ca0-87d4-7b16caf5d00b"
+version = "0.10.4"
+
 [[Calculus]]
 deps = ["LinearAlgebra"]
 git-tree-sha1 = "f641eb0a4f00c343bbc32346e1217b86f3ce9dad"
@@ -290,6 +296,12 @@ git-tree-sha1 = "94f5101b96d2d968ace56f7f2db19d0a5f592e28"
 uuid = "5789e2e9-d7fb-5bc7-8068-2c6fae9b9549"
 version = "1.15.0"
 
+[[FilePathsBase]]
+deps = ["Compat", "Dates", "Mmap", "Printf", "Test", "UUIDs"]
+git-tree-sha1 = "e27c4ebe80e8699540f2d6c805cc12203b614f12"
+uuid = "48062228-2e41-5def-b9a4-89aafe57970f"
+version = "0.9.20"
+
 [[FillArrays]]
 deps = ["LinearAlgebra", "Random", "SparseArrays", "Statistics"]
 git-tree-sha1 = "87519eb762f85534445f5cda35be12e32759ee14"
@@ -393,6 +405,12 @@ version = "0.1.3"
 git-tree-sha1 = "f550e6e32074c939295eb5ea6de31849ac2c9625"
 uuid = "83e8ac13-25f8-5344-8a64-a9f2b223428f"
 version = "0.5.1"
+
+[[InlineStrings]]
+deps = ["Parsers"]
+git-tree-sha1 = "d19f9edd8c34760dca2de2b503f969d8700ed288"
+uuid = "842dd82b-1e85-43dc-bf29-5d0ee9dffc48"
+version = "1.1.4"
 
 [[InteractiveUtils]]
 deps = ["Markdown"]
@@ -824,6 +842,12 @@ git-tree-sha1 = "f94f779c94e58bf9ea243e77a37e16d9de9126bd"
 uuid = "6c6a2e73-6563-6170-7368-637461726353"
 version = "1.1.1"
 
+[[SentinelArrays]]
+deps = ["Dates", "Random"]
+git-tree-sha1 = "c0f56940fc967f3d5efed58ba829747af5f8b586"
+uuid = "91c51154-3ec4-41a3-a24f-3f23e20d615c"
+version = "1.3.15"
+
 [[Serialization]]
 uuid = "9e88b42a-f829-5b0c-bbe9-9e923198166b"
 
@@ -1002,6 +1026,12 @@ version = "1.12.0"
 git-tree-sha1 = "58d6e80b4ee071f5efd07fda82cb9fbe17200868"
 uuid = "81def892-9a0e-5fdd-b105-ffc91e053289"
 version = "1.3.0"
+
+[[WeakRefStrings]]
+deps = ["DataAPI", "InlineStrings", "Parsers"]
+git-tree-sha1 = "b1be2855ed9ed8eac54e5caff2afcdb442d52c23"
+uuid = "ea10d353-3f73-51f8-a26c-33c1cb351aa5"
+version = "1.4.2"
 
 [[Zlib_jll]]
 deps = ["Libdl"]

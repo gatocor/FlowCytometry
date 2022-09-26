@@ -13,23 +13,6 @@ struct FlowCytometryGate
 end
 
 """
-    mutable struct FlowCytometryControl
-    
-Structure that stores the data coming from control stainings for correcting for spillover.
-
-**Elements**:
- - **var::DataFrame** Dataframe including the metainformation of the channels. All the controls should have the same channels measures.
- - **obs::Dict{String,DataFrame}** Dictionary of Dataframes containing the metainformation from the cells in each channel.
- - **X::Dict{String,Matrix{AbstractFloat}}** Dictionary of matrices from the control measures.
-
-"""
-mutable struct FlowCytometryControl
-    var::DataFrame
-    obs::Dict{String,DataFrame}
-    X::Dict{String,Matrix{AbstractFloat}}
-end
-
-"""
     mutable struct FlowCytometryExperiment
     
 Structure containing a Flow Cytometry experiment and all the processes applyied to it.
@@ -51,7 +34,6 @@ mutable struct FlowCytometryExperiment
     var::DataFrame
     obsm::Dict{String,Matrix{<:AbstractFloat}}
     layers::Dict{String,Matrix{<:AbstractFloat}}
-    controls::Union{Nothing,FlowCytometryControl}
     gates::Dict{String,FlowCytometryGate}
     uns::Dict{String,Any}
 
@@ -74,7 +56,6 @@ mutable struct FlowCytometryExperiment
         return new(X,obs,var,
             Dict{String,Matrix{AbstractFloat}}(),
             Dict{String,Matrix{AbstractFloat}}(),
-            nothing,
             Dict{String,FlowCytometryGate}(),
             Dict{String,Any}()
             )
@@ -236,6 +217,101 @@ function removeChannels!(fcs::FlowCytometryExperiment, s::Vector{Bool})
     if size(fcs.X)[2] == length(s)
         setfield!(fcs,:X,fcs.X[:,s])
         setfield!(fcs,:var,fcs.var[s,:])
+    end
+
+    return
+end
+
+"""
+    mutable struct FlowCytometryControl
+    
+Structure that stores the data coming from control stainings for correcting for spillover. 
+In order for the system to compute properly the spillover matrix, the names of the dictionary must correspond with the names in the channel labels in var.
+
+**Elements**:
+ - **controls::Dict{String,FlowCytometryExperiment}** Dictionary of FlowCytometryExperiments containing the control experiments.
+ - **spillover::Union{Nothing,Matrix{<:AbstractFloat}}** Spillover matrix inverted.
+ - **uns::Dict{String,Any}** Dictionary where to store metainformation from spillover algorithm.
+"""
+mutable struct FlowCytometryControl
+    controls::Dict{String,FlowCytometryExperiment}
+    spillover::Union{Nothing,Matrix{<:AbstractFloat}}
+    uns::Dict{String,Any}
+
+    function FlowCytometryControl()
+        return new(Dict{String,FlowCytometryExperiment}(),nothing,Dict{String,Any}())
+    end
+end
+
+"""
+    function renameControl!(fcs::FlowCytometryControl,oldName::String,newName::AbstractString)
+
+Change the name of the a channel in the of a FlowCytometryControl object.
+
+**Arguments**
+ - **fcs::FlowCytometryControl** FlowCytometryControl where to change the name.
+ - **oldName::String** Old name of the channel.
+ - **newName::AbstractString** New name of the channel.
+
+**Returns**
+ Nothing
+"""
+function renameControl!(fcs::FlowCytometryControl,oldName::String,newName::AbstractString)
+
+    if oldName in keys(fcs.controls)
+        fcs.controls[newName] = fcs.controls[oldName]
+        delete!(fcs.controls,oldName)
+    end
+    
+    return
+end
+
+"""
+    function renameControl!(fcs::FlowCytometryControl,dic::Dict{<:AbstractString,<:AbstractString})
+
+Change the name of the channels in the of a FlowCytometryControl object.
+
+**Arguments**
+ - **fcs::FlowCytometryControl** FlowCytometryControl where to change the name.
+ - **dic::Dict{<:AbstractString,<:AbstractString}** Dictionary of old names as keys and new names as values.
+
+**Returns**
+ Nothing
+"""
+function renameControl!(fcs::FlowCytometryControl,dic::Dict{<:AbstractString,<:AbstractString})
+
+    for (oldName,newName) in pairs(dic)
+        renameControl!(fcs,oldName,newName)
+    end
+
+    return
+end
+
+"""
+    function checkControlNames(fcs::FlowCytometryControl)
+
+function that checks that the keys of the FlowCytometryControl object correspond to channels defined in .var.channels.
+
+**Arguemtns**
+ - **fcs::FlowCytometryControl** FlowCytometryControl object where to check if consistent.
+
+**Returns**
+ Gives an error if there is any inconsistency.
+"""
+function checkControlNames(fcs::FlowCytometryControl)
+
+    for (control1,_) in pairs(fcs.controls)
+        for (control2,_) in pairs(fcs.controls)
+            if all(fcs.controls[control1].var.channel .!= fcs.controls[control2].var.channel)
+                error("Control ", control1, " and ", control2, " have different control names.")
+            end
+        end    
+    end
+
+    for (control1,_) in pairs(fcs.controls)
+        if !(control1 in fcs.controls[control1].var.channel)
+            error("Control name ", control1, " does not correspond to a channel from var.channel. Channels in the database are: ", sort(fcs.controls[control1].var.channel))
+        end
     end
 
     return

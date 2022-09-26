@@ -4,10 +4,12 @@ authors = ["gatocor <g.torregrosa@outlook.com>"]
 version = "0.1.0"
 
 [deps]
+CSV = "336ed68f-0bac-5ca0-87d4-7b16caf5d00b"
 DataFrames = "a93c6f00-e57d-5684-b7b6-d8193f3e46c0"
 FCSFiles = "d76558cf-badf-52d4-a17e-381ab0b0d937"
 FileIO = "5789e2e9-d7fb-5bc7-8068-2c6fae9b9549"
 JLD = "4138dd39-2aa7-5051-a626-17a0bb65d9c8"
+LinearAlgebra = "37e2e46d-f89d-539d-b4ee-838fcccc9c8e"
 MLJ = "add582a8-e3ab-11e8-2d5e-e98b27df1bc7"
 MLJMultivariateStatsInterface = "1b6a4a23-ba22-4f51-9698-8599985d3728"
 MLJScikitLearnInterface = "5ae90465-5518-4432-b9d2-8a1def2f0cab"
