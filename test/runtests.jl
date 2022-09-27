@@ -55,50 +55,48 @@ using CSV
 
 # @testset "FlowCytometryExperiment" begin
 
-    # @test_nowarn FlowCytometryExperiment(ones(10,10))
-    # @test_nowarn FlowCytometryExperiment(ones(10,10),obs=DataFrame(:a=>1:10))
-    # @test_nowarn FlowCytometryExperiment(ones(10,10),var=DataFrame(:a=>1:10))
-    # @test_throws ErrorException FlowCytometryExperiment(ones(10,10),obs=DataFrame(:a=>1:3))
-    # @test_throws ErrorException FlowCytometryExperiment(ones(10,10),var=DataFrame(:a=>1:3))
+#     @test_nowarn FlowCytometryExperiment(ones(10,10))
+#     @test_nowarn FlowCytometryExperiment(ones(10,10),obs=DataFrame(:a=>1:10))
+#     @test_nowarn FlowCytometryExperiment(ones(10,10),var=DataFrame(:a=>1:10))
+#     @test_throws ErrorException FlowCytometryExperiment(ones(10,10),obs=DataFrame(:a=>1:3))
+#     @test_throws ErrorException FlowCytometryExperiment(ones(10,10),var=DataFrame(:a=>1:3))
 
-    # @test_nowarn loadFCExperiment("testdata/BD-FACS-Aria-II.fcs")
-    # @test_nowarn loadFCControls("testdata/FlowRepository_FR-FCM-Z2SS_files")
-    # @test_nowarn loadFCControls(Dict([
-    #                                 "APC"=>"testdata/FlowRepository_FR-FCM-Z2SS_files/Compensation Controls_APC Stained Control_006.fcs",
-    #                                 "APC-H7"=>"testdata/FlowRepository_FR-FCM-Z2SS_files/Compensation Controls_APC-H7 Stained Control_008.fcs"
-    #                                 ]
-    #                                 )
-    #                             )
-    # @test_nowarn begin fcs = loadFCControls("testdata/FlowRepository_FR-FCM-Z2SS_files")
-    #     channelnames = CSV.read("testdata/FlowRepository_FR-FCM-Z2SS_files/attachments/fcs_control.csv",DataFrame)
-    #     channelnames = Dict([String(split(i,".fcs")[1])=>String(j) for (i,j) in eachrow(channelnames[:,["filename","dye"]])])
-    #     renameControl!(fcs,channelnames)
-    #     checkControlNames(fcs)
-    # end
+#     @test_nowarn loadFCExperiment("testdata/BD-FACS-Aria-II.fcs")
+#     @test_nowarn loadFCControls("testdata/FlowRepository_FR-FCM-Z2SS_files")
+#     @test_nowarn loadFCControls(Dict([
+#                                     "testdata/FlowRepository_FR-FCM-Z2SS_files/Compensation Controls_APC-R700 Stained Control_007.fcs"=>"APC-R700",
+#                                     "testdata/FlowRepository_FR-FCM-Z2SS_files/Compensation Controls_APC-H7 Stained Control_008.fcs"=>"APC-H7"
+#                                     ]
+#                                     )
+#                                 )
+#     @test_nowarn begin fcs = loadFCControls("testdata/FlowRepository_FR-FCM-Z2SS_files")
+#         channelnames = CSV.read("testdata/FlowRepository_FR-FCM-Z2SS_files/attachments/fcs_control.csv",DataFrame)
+#         channelnames = Dict([i=>String(j) for (i,j) in eachrow(channelnames[:,["filename","dye"]])])
+#         renameControl!(fcs,channelnames)
+#         checkControlNames(fcs)
+#     end
 
-    # @test_nowarn begin m = FlowCytometryExperiment(ones(10,10)); m.obs = DataFrame(:a=>ones(10)) end
-    # @test_nowarn begin m = FlowCytometryExperiment(ones(10,10)); m.var = DataFrame(:a=>ones(10)) end
-    # @test_nowarn begin m = FlowCytometryExperiment(ones(10,10)); m.X = zeros(10,10) end
-    # @test_throws ErrorException begin m = FlowCytometryExperiment(ones(10,10)); m.obs = DataFrame(:a=>ones(9)) end
-    # @test_throws ErrorException begin m = FlowCytometryExperiment(ones(10,10)); m.var = DataFrame(:a=>ones(9)) end
-    # @test_throws ErrorException begin m = FlowCytometryExperiment(ones(10,10)); m.X = zeros(9,10) end
-    # @test_throws ErrorException begin m = FlowCytometryExperiment(ones(10,10)); m.X = zeros(10,9) end
+#     @test_nowarn begin m = FlowCytometryExperiment(ones(10,10)); m.obs = DataFrame(:a=>ones(10)) end
+#     @test_nowarn begin m = FlowCytometryExperiment(ones(10,10)); m.var = DataFrame(:a=>ones(10)) end
+#     @test_nowarn begin m = FlowCytometryExperiment(ones(10,10)); m.X = zeros(10,10) end
+#     @test_throws ErrorException begin m = FlowCytometryExperiment(ones(10,10)); m.obs = DataFrame(:a=>ones(9)) end
+#     @test_throws ErrorException begin m = FlowCytometryExperiment(ones(10,10)); m.var = DataFrame(:a=>ones(9)) end
+#     @test_throws ErrorException begin m = FlowCytometryExperiment(ones(10,10)); m.X = zeros(9,10) end
+#     @test_throws ErrorException begin m = FlowCytometryExperiment(ones(10,10)); m.X = zeros(10,9) end
 
-    # @test_nowarn begin m = FlowCytometryExperiment(ones(10,10)); m.obsm["A"] = zeros(10,10); keep = fill(false, 10); keep[1] = true; removeCells(m,keep) end
-    # @test_nowarn begin m = FlowCytometryExperiment(ones(10,10)); m.obsm["A"] = zeros(10,10); keep = fill(false, 10); keep[1] = true; removeCells!(m,keep) end
-    # @test_nowarn begin m = FlowCytometryExperiment(ones(10,10)); m.obsm["A"] = zeros(10,10); keep = fill(false, 10); keep[1] = true; removeChannels(m,keep) end
-    # @test_nowarn begin m = FlowCytometryExperiment(ones(10,10)); m.obsm["A"] = zeros(10,10); keep = fill(false, 10); keep[1] = true; removeChannels!(m,keep) end
+#     @test_nowarn begin m = FlowCytometryExperiment(ones(10,10)); m.obsm["A"] = zeros(10,10); keep = fill(false, 10); keep[1] = true; removeCells(m,keep) end
+#     @test_nowarn begin m = FlowCytometryExperiment(ones(10,10)); m.obsm["A"] = zeros(10,10); keep = fill(false, 10); keep[1] = true; removeCells!(m,keep) end
+#     @test_nowarn begin m = FlowCytometryExperiment(ones(10,10)); m.obsm["A"] = zeros(10,10); keep = fill(false, 10); keep[1] = true; removeChannels(m,keep) end
+#     @test_nowarn begin m = FlowCytometryExperiment(ones(10,10)); m.obsm["A"] = zeros(10,10); keep = fill(false, 10); keep[1] = true; removeChannels!(m,keep) end
 
-    # @test begin m = FlowCytometryExperiment(ones(10,10)); m.obsm["A"] = zeros(10,10); keep = fill(false, 10); keep[1] = true; m2 = removeCells(m,keep); size(m2.X) == (1,10) end
-    # @test begin m = FlowCytometryExperiment(ones(10,10)); m.obsm["A"] = zeros(10,10); keep = fill(false, 10); keep[1] = true; m2 = removeCells(m,keep); size(m2.obsm["A"]) == (1,10) end
-    # @test begin m = FlowCytometryExperiment(ones(10,10)); m.obsm["A"] = zeros(10,10); keep = fill(false, 10); keep[1] = true; removeCells!(m,keep); size(m.X) == (1,10) end
-    # @test begin m = FlowCytometryExperiment(ones(10,10)); m.obsm["A"] = zeros(10,10); keep = fill(false, 10); keep[1] = true; removeCells!(m,keep); size(m.obsm["A"]) == (1,10) end
-    # @test begin m = FlowCytometryExperiment(ones(10,10)); m.obsm["A"] = zeros(10,10); keep = fill(false, 10); keep[1] = true; m2 = removeChannels(m,keep); size(m2.X) == (10,1) end
-    # @test begin m = FlowCytometryExperiment(ones(10,10)); m.obsm["A"] = zeros(10,10); keep = fill(false, 10); keep[1] = true; removeChannels!(m,keep); size(m.X) == (10,1) end
+#     @test begin m = FlowCytometryExperiment(ones(10,10)); m.obsm["A"] = zeros(10,10); keep = fill(false, 10); keep[1] = true; m2 = removeCells(m,keep); size(m2.X) == (1,10) end
+#     @test begin m = FlowCytometryExperiment(ones(10,10)); m.obsm["A"] = zeros(10,10); keep = fill(false, 10); keep[1] = true; m2 = removeCells(m,keep); size(m2.obsm["A"]) == (1,10) end
+#     @test begin m = FlowCytometryExperiment(ones(10,10)); m.obsm["A"] = zeros(10,10); keep = fill(false, 10); keep[1] = true; removeCells!(m,keep); size(m.X) == (1,10) end
+#     @test begin m = FlowCytometryExperiment(ones(10,10)); m.obsm["A"] = zeros(10,10); keep = fill(false, 10); keep[1] = true; removeCells!(m,keep); size(m.obsm["A"]) == (1,10) end
+#     @test begin m = FlowCytometryExperiment(ones(10,10)); m.obsm["A"] = zeros(10,10); keep = fill(false, 10); keep[1] = true; m2 = removeChannels(m,keep); size(m2.X) == (10,1) end
+#     @test begin m = FlowCytometryExperiment(ones(10,10)); m.obsm["A"] = zeros(10,10); keep = fill(false, 10); keep[1] = true; removeChannels!(m,keep); size(m.X) == (10,1) end
 
-    # @test begin m = FlowCytometryExperiment([1 2 3].*ones(10,3),var=DataFrame(:channel=>["A","B","C"])); m["B"] == 2 .*ones(10) end
-    # @test begin m = FlowCytometryExperiment([1 2 3].*ones(10,3),var=DataFrame(:channel=>[:A,:B,:C])); m[:B] == 2 .*ones(10) end
-    # @test begin m = FlowCytometryExperiment([1 2 3].*ones(10,3),var=DataFrame(:channel=>[1,2,3])); m[2] == 2 .*ones(10) end
+#     @test begin m = FlowCytometryExperiment([1 2 3].*ones(10,3),channels=["A","B","C"]); m["B"] == 2 .*ones(10) end
 
 # end
 
@@ -106,10 +104,44 @@ using CSV
     
     @test_nowarn begin fcs = loadFCControls("testdata/FlowRepository_FR-FCM-Z2SS_files")
         channelnames = CSV.read("testdata/FlowRepository_FR-FCM-Z2SS_files/attachments/fcs_control.csv",DataFrame)
-        channelnames = Dict([String(split(i,".fcs")[1])=>String(j) for (i,j) in eachrow(channelnames[:,["filename","dye"]])])
+        channelnames = Dict([i=>String(j) for (i,j) in eachrow(channelnames[:,["filename","dye"]])])
         renameControl!(fcs,channelnames)
 
-        Compensation.computeSpilloverMatrix!(fcs)
+        Compensation.computeCompensationMatrix!(fcs)
+    end
+
+    @test_nowarn begin fcs = loadFCControls("testdata/FlowRepository_FR-FCM-Z2SS_files")
+        channelnames = CSV.read("testdata/FlowRepository_FR-FCM-Z2SS_files/attachments/fcs_control.csv",DataFrame)
+        channelnames = Dict([i=>String(j) for (i,j) in eachrow(channelnames[:,["filename","dye"]])])
+        renameControl!(fcs,channelnames)
+
+        Compensation.computeCompensationMatrix!(fcs)
+
+        Compensation.compensate!(fcs)
+    end
+
+    @test_nowarn begin 
+        fcs = loadFCExperiment("testdata/FlowRepository_FR-FCM-Z2SS_files/Compensation Controls_APC-R700 Stained Control_007.fcs")
+        fcsControl = loadFCControls("testdata/FlowRepository_FR-FCM-Z2SS_files")
+        channelnames = CSV.read("testdata/FlowRepository_FR-FCM-Z2SS_files/attachments/fcs_control.csv",DataFrame)
+        channelnames = Dict([i=>String(j) for (i,j) in eachrow(channelnames[:,["filename","dye"]])])
+        renameControl!(fcsControl,channelnames)
+
+        Compensation.computeCompensationMatrix!(fcsControl)
+
+        Compensation.compensate!(fcs,control=fcsControl)
+    end
+
+    @test_nowarn begin 
+        fcs = loadFCExperiment("testdata/FlowRepository_FR-FCM-Z2SS_files/Compensation Controls_APC-R700 Stained Control_007.fcs")
+        fcsControl = loadFCControls("testdata/FlowRepository_FR-FCM-Z2SS_files")
+        channelnames = CSV.read("testdata/FlowRepository_FR-FCM-Z2SS_files/attachments/fcs_control.csv",DataFrame)
+        channelnames = Dict([i=>String(j) for (i,j) in eachrow(channelnames[:,["filename","dye"]])])
+        renameControl!(fcsControl,channelnames)
+
+        Compensation.computeCompensationMatrix!(fcsControl)
+        Compensation.assignCompensation!(fcs,control=fcsControl)
+        #Compensation.compensate!(fcs)
     end
 
 end

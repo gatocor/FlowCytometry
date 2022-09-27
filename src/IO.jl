@@ -20,7 +20,7 @@ function loadFCExperiment(file::String)
     for (i,c) in enumerate(channels)
         X[:,i] .= flow.data[c]
     end
-    ftcexp = FlowCytometryExperiment(X,var=var)
+    ftcexp = FlowCytometryExperiment(X,var=var,channels=channels)
 
     ftcexp.uns["ExperimentInformation"] = flow.params
 
@@ -28,25 +28,30 @@ function loadFCExperiment(file::String)
 end
 
 """
-    function loadFCControls(folder::String)
+    function loadFCControls(folder::String; control_keyword::String="", inferChannel::Bool=true)
 
 Function to upload all the files in a folder corresponding to control files.
 
 **Arguments**
  - **folder::String** Address of folder where all the controls are.
 
+**Keyword Arguments**
+ - **control_keyword::String=""** String by which to identify control experiment files.
+
 **Returns**
- FlowCytometryControl object with all the controls uploaded.
+ - FlowCytometryControl object with all the controls uploaded. 
 """
-function loadFCControls(folder::String)
+function loadFCControls(folder::String; control_keyword::String="")
 
     controllist = readdir(folder)
     controllist = [i for i in controllist if occursin(".fcs",i)]
+    controllist = [i for i in controllist if occursin(control_keyword,i)]
 
     object = FlowCytometryControl()
 
     for control in controllist
-        object.controls[split(control,".fcs")[1]] = loadFCExperiment(string(folder,"/",control))
+        object.controls[control] = loadFCExperiment(string(folder,"/",control))
+        object.channels = object.controls[control].channels
     end
 
     return object
@@ -56,10 +61,10 @@ end
 """
     function loadFCControls(dic::Dict{String,String})
 
-Function to upload all the files as given by a dictionary of channels and the corresponding control files.
+Function to upload all the files as given by a dictionary of control files and the corresponding channels.
 
 **Arguments**
- - **dic::Dict{String,String}** Disctionary with names of channels and file adress assotiated with them.
+ - **dic::Dict{String,String}** Disctionary with names of file and name adress assotiated with them.
 
 **Returns**
  FlowCytometryControl object with all the controls uploaded.
@@ -68,8 +73,9 @@ function loadFCControls(dic::Dict{String,String})
 
     object = FlowCytometryControl()
 
-    for (control,file) in pairs(dic)
+    for (file,control) in pairs(dic)
         object.controls[control] = loadFCExperiment(file)
+        object.channels = object.controls[control].channels
     end
 
     return object

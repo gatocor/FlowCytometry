@@ -2,8 +2,8 @@ module Clustering
 
     using FlowCytometry, MLJ
 
-    kmeans_ = MLJ.@load KMeans pkg=ScikitLearn
-    agglomerative_ = MLJ.@load AgglomerativeClustering pkg=ScikitLearn
+    kmeans_ = MLJ.@load KMeans pkg=ScikitLearn verbosity=0
+    agglomerative_ = MLJ.@load AgglomerativeClustering pkg=ScikitLearn verbosity=0
 
 """
     function kmeansTuning(fct::FlowCytometryExperiment;
@@ -188,7 +188,7 @@ To help asses the number of clusters you can use **KMeansTuning** function.
                     init=init
                     )
         mach = machine(model,X,scitype_check_level=0)
-        fit!(mach)
+        fit!(mach,verbosity=0)
         fct.obs[:,key_added] = predict(mach)
 
         fct.uns[key_added] = Dict([
@@ -240,7 +240,7 @@ Function that clusters the data using the AgglomerativeClustering algorithm.
                             compute_full_tree = "auto", 
                             linkage = "ward", 
                             distance_threshold = nothing,
-                            key_added::String = "KMeans",
+                            key_added::String = "agglomerative",
                             key_obsm::Union{Nothing,String} = nothing,
                             n_components::Union{Nothing,Int} = nothing,
                             key_used_channels::Union{Nothing,String} = nothing)
@@ -276,7 +276,7 @@ Function that clusters the data using the AgglomerativeClustering algorithm.
                     distance_threshold = distance_threshold
                     )
         mach = machine(model,X,scitype_check_level=0)
-        fit!(mach)
+        fit!(mach,verbosity=0)
         fct.obs[:,key_added] = fitted_params(mach)[2]
 
         fct.uns[key_added] = Dict([

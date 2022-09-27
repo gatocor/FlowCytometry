@@ -32,10 +32,12 @@ loadFCControls
 isInsideGate
 ```
 
-## Spilover/Unmixing
+## Compensation (Spillover/Unmixing)
 
 ```@docs
-Compensation.computeSpilloverMatrix!
+Compensation.computeCompensationMatrix!
+Compensation.compensate!
+Compensation.assignCompensation!
 ```
 
 ## Dimensionaity reduction

@@ -2,7 +2,7 @@ module DimensionalityReduction
 
     using FlowCytometry, MLJ, UMAP, DataFrames
 
-    pca_ = MLJ.@load PCA pkg=MultivariateStats
+    pca_ = MLJ.@load PCA pkg=MultivariateStats verbosity=0
 
 """
     function pca!(fct::FlowCytometryExperiment;
@@ -56,7 +56,7 @@ Perform pca analysis over the channels.
                     mean = mean
                     )
         mach = machine(model,X,scitype_check_level=0)
-        MLJ.fit!(mach)
+        MLJ.fit!(mach,verbosity=0)
         fct.obsm[key_added] = MLJ.matrix(MLJ.transform(mach))
 
         fct.uns[key_added] = Dict([

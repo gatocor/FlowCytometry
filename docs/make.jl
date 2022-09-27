@@ -6,7 +6,8 @@ using Documenter, FlowCytometry
 makedocs(sitename="FlowCytometry.jl",
 pages = [
     "Home" => "index.md",
-    "API.md"
+    "Usage/Usage.md",
+    "API.md",
 ],
 format = Documenter.HTML(prettyurls = false)
 )

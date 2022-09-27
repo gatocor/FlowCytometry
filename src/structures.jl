@@ -18,17 +18,18 @@ end
 Structure containing a Flow Cytometry experiment and all the processes applyied to it.
 
 **Elements:**   
+ - **channels::Vector{String}** Name of the channels in the experiment.
  - **X::Matrix{AbstractFloat}** Matrix of Cells X Channel of the experiment.
  - **obs::DataFrame** Dataframe with all the metainformation of the cells
  - **var::DataFrame** Dataframe with all the metainformation of the channels
  - **obsm::Dict{String,Matrix{AbstractFloat}}** Dictionary containing transformed matrices of the original data.
  - **layers::Dict{String,Matrix{AbstractFloat}}** Dictionary containing Cells X Channel matrices of data that are required to control (e.g. Raw matrix).
- - **controls::Dict{FlowCytometryControl}** Control object with the control staining to compute spillover matrices.
  - **gates::Dict{String,FlowCytometryGate}** List of Gate and Gate set objects
- - **uns::Dict{String,Any}** Dictionary contining all the metainformation of cells
+ - **uns::Dict{String,Any}** Dictionary contining all the metainformation of algorithms applied to the data.
 
 """
 mutable struct FlowCytometryExperiment
+    channels::Vector{String}
     X::Matrix{<:AbstractFloat}
     obs::DataFrame
     var::DataFrame
@@ -37,7 +38,7 @@ mutable struct FlowCytometryExperiment
     gates::Dict{String,FlowCytometryGate}
     uns::Dict{String,Any}
 
-    function FlowCytometryExperiment(X::Matrix{<:AbstractFloat};obs::DataFrame=DataFrame(),var::DataFrame=DataFrame())
+    function FlowCytometryExperiment(X::Matrix{<:AbstractFloat};obs::DataFrame=DataFrame(),var::DataFrame=DataFrame(),channels::Vector{String}=String[])
         
         s = size(X)
 
@@ -47,18 +48,38 @@ mutable struct FlowCytometryExperiment
             error("obs dataframe must have the same number of rows than rows in X.")
         end
 
+        if isempty(channels)
+            channels = string.(1:s[2])
+        elseif length(channels) != s[2]
+            error("var dataframe must have the same number of rows than columns in X.")
+        end
+
         if isempty(var)
-            var = DataFrame(:channel=>1:s[2])
+            var = DataFrame(:channel=>channels)
         elseif size(var)[1] != s[2]
             error("var dataframe must have the same number of rows than columns in X.")
         end
 
-        return new(X,obs,var,
+        return new(channels,X,obs,var,
             Dict{String,Matrix{AbstractFloat}}(),
             Dict{String,Matrix{AbstractFloat}}(),
             Dict{String,FlowCytometryGate}(),
             Dict{String,Any}()
             )
+    end
+end
+
+function Base.setproperty!(fcs::FlowCytometryExperiment, symbol::Symbol, data::Vector)
+    if symbol == :channels 
+        s = size(fcs.X)
+        s2 = length(data)
+        if s[2] != s2
+            error("Assigned channels vector must have the same number of channels. The vector has ", s[1], " channels and ", s2, " are trying to be assigned.")
+        else
+            setfield!(fcs,:channels,data)
+        end
+    else
+        setfield!(adata,symbol,data)
     end
 end
 
@@ -105,13 +126,13 @@ end
 Access a channel directly by its .var.channel property.
 
 e.g. 
-    >>> fct.var.channels
+    >>> fct.channels
         ["FCT-Scatter-A","FCT-Scatter-B"]
     >>> fct["FCT-Scatter-A"]
         [0.1,20.33,0.45,0.28]
 """
 function Base.getindex(fcs::FlowCytometryExperiment, s::Union{Symbol,String,<:Real})
-    pos = findfirst(fcs.var.channel .== s)
+    pos = findfirst(fcs.channels .== s)
     if pos === nothing
         error(s, " has not been found in var.channels.")
     else
@@ -134,6 +155,7 @@ FlowCytometryExperiment with the cells not prunned.
 function removeCells(fcs::FlowCytometryExperiment, s::Vector{Bool})
 
     fcsNew = FlowCytometryExperiment(fcs.X[s,:])
+    fcsNew.channels = deepcopy(fcs.channels)
     fcsNew.obs = deepcopy(fcs.obs[s,:])
     fcsNew.var = deepcopy(fcs.var)
     obsmkeys = [i for i in keys(fcs.obsm)]
@@ -141,7 +163,6 @@ function removeCells(fcs::FlowCytometryExperiment, s::Vector{Bool})
         fcsNew.obsm[i] = fcs.obsm[i][s,:]  
     end
     fcsNew.layers = deepcopy(fcs.layers)
-    fcsNew.controls = deepcopy(fcs.controls)
     fcsNew.gates = deepcopy(fcs.gates)
     fcsNew.uns = deepcopy(fcs.uns)
 
@@ -189,11 +210,11 @@ FlowCytometryExperiment with the channels not removed.
 function removeChannels(fcs::FlowCytometryExperiment, s::Vector{Bool})
 
     fcsNew = FlowCytometryExperiment(fcs.X[:,s])
+    fcsNew.channels = deepcopy(fcs.channels[s])
     fcsNew.obs = deepcopy(fcs.obs)
     fcsNew.var = deepcopy(fcs.var[s,:])
     fcsNew.obsm = deepcopy(fcs.obsm)
     fcsNew.layers = deepcopy(fcs.layers)
-    fcsNew.controls = deepcopy(fcs.controls)
     fcsNew.gates = deepcopy(fcs.gates)
     fcsNew.uns = deepcopy(fcs.uns)
 
@@ -217,6 +238,7 @@ function removeChannels!(fcs::FlowCytometryExperiment, s::Vector{Bool})
     if size(fcs.X)[2] == length(s)
         setfield!(fcs,:X,fcs.X[:,s])
         setfield!(fcs,:var,fcs.var[s,:])
+        setfield!(fcs,:channels,fcs.channels[s])
     end
 
     return
@@ -229,17 +251,19 @@ Structure that stores the data coming from control stainings for correcting for 
 In order for the system to compute properly the spillover matrix, the names of the dictionary must correspond with the names in the channel labels in var.
 
 **Elements**:
+ - **channels::Vector{String}** Name of the channels in the experiment.
  - **controls::Dict{String,FlowCytometryExperiment}** Dictionary of FlowCytometryExperiments containing the control experiments.
- - **spillover::Union{Nothing,Matrix{<:AbstractFloat}}** Spillover matrix inverted.
+ - **compensationMatrix::Union{Nothing,Matrix{<:AbstractFloat}}** Spillover matrix inverted.
  - **uns::Dict{String,Any}** Dictionary where to store metainformation from spillover algorithm.
 """
 mutable struct FlowCytometryControl
+    channels::Vector{String}
     controls::Dict{String,FlowCytometryExperiment}
-    spillover::Union{Nothing,Matrix{<:AbstractFloat}}
+    compensationMatrix::Union{Nothing,Matrix{<:AbstractFloat}}
     uns::Dict{String,Any}
 
     function FlowCytometryControl()
-        return new(Dict{String,FlowCytometryExperiment}(),nothing,Dict{String,Any}())
+        return new(String[],Dict{String,FlowCytometryExperiment}(),nothing,Dict{String,Any}())
     end
 end
 
@@ -302,15 +326,15 @@ function checkControlNames(fcs::FlowCytometryControl)
 
     for (control1,_) in pairs(fcs.controls)
         for (control2,_) in pairs(fcs.controls)
-            if all(fcs.controls[control1].var.channel .!= fcs.controls[control2].var.channel)
+            if all(fcs.controls[control1].channels .!= fcs.controls[control2].channels)
                 error("Control ", control1, " and ", control2, " have different control names.")
             end
         end    
     end
 
     for (control1,_) in pairs(fcs.controls)
-        if !(control1 in fcs.controls[control1].var.channel)
-            error("Control name ", control1, " does not correspond to a channel from var.channel. Channels in the database are: ", sort(fcs.controls[control1].var.channel))
+        if !(control1 in fcs.controls[control1].channels)
+            error("Control name ", control1, " does not correspond to a channel from .channels. Channels in the database are: ", sort(fcs.controls[control1].channels))
         end
     end
 
