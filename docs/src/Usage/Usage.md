@@ -19,6 +19,17 @@ using CSV
 using DataFrames
 ```
 
+
+<div style="padding: 1em; background-color: #f8d6da; border: 1px solid #f5c6cb; font-weight: bold;">
+<p>The WebIO Jupyter extension was not detected. See the
+<a href="https://juliagizmos.github.io/WebIO.jl/latest/providers/ijulia/" target="_blank">
+    WebIO Jupyter integration documentation
+</a>
+for more information.
+</div>
+
+
+
 ## Basics of the FlowCytometry.jl structures
 
 The Flow cytometry package works around a few structures that help with the upload and manipulation of flow cytometry data.
@@ -191,6 +202,30 @@ scatter(fcs["APC-A"],fcs["APC-R700-A"],label="cells",xlabel="APC-R700-A",ylabel=
 
 We can already see from this data the spillover effect of APC-A to APC-R700-A.
 
+## Gating
+
+Flow compensation usually requires of quality control of the cells and measures change in proportion of cells between experimennts to see if there is changes in the number of cells present in specific regions of the channel space.
+
+We can define gates for our experiment in several ways.
+
+### Manual gating
+
+We can define a manual gates by calling the function `Gating.manualGating!`. This will start an app that can be accessed in any browser by writing `localhost::channel`, for the channel prompted by the function. When desiring to stop adding gates, you will have just to kill the app with `ctr+C` or similar and the gates will be added to the `FlowCytometryExperiment` object.
+
+
+```julia
+Gating.manualGating!(fcs)
+```
+
+    ┌ Info: Listening on: 0.0.0.0:8050
+    └ @ HTTP.Servers /home/gabriel/.julia/packages/HTTP/aTjcj/src/Servers.jl:268
+
+
+When calling the function, in the browser you will see a page like this:
+
+![](ManualGating.png)
+
+
 ## Compensation
 
 Most part of flow cytometry experiments use several signaling channels. Some of the most common experimental as flow cytometry or spectral cytometry suffer from spillover/mixing of the information among the channels. To correct this behavior and having uncoupled signals, one-fluorophore control experiments are performed in order to compute what is called the compensation matrice to uncouple the channels.
@@ -300,7 +335,7 @@ ylabel!("APC-R700-A")
 
 
     
-![svg](output_29_0.svg)
+![svg](output_32_0.svg)
     
 
 
@@ -358,7 +393,7 @@ plot(scatter(fcs["1"],fcs["2"],title="Variables"),
 
 
     
-![svg](output_38_0.svg)
+![svg](output_41_0.svg)
     
 
 
@@ -388,7 +423,7 @@ plot(scatter(fcs.obsm["pca"][:,1],fcs.obsm["pca"][:,2],markercolor=Array(fcs.obs
 
 
     
-![svg](output_42_0.svg)
+![svg](output_45_0.svg)
     
 
 

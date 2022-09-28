@@ -6,7 +6,7 @@ export FlowCytometryExperiment, FlowCytometryControl, FlowCytometryGate
 export renameControl!, checkControlNames
 export loadFCExperiment, loadFCControls, isInsideGate
 export removeCells, removeCells!, removeChannels, removeChannels!
-export Compensation, DimensionalityReduction, Clustering
+export Gating, Compensation, DimensionalityReduction, Clustering
 
 include("./structures.jl")
 include("./inPolygon.jl")
