@@ -100,51 +100,51 @@ using CSV
 
 # end
 
-@testset "Compensation" begin
+# @testset "Compensation" begin
     
-    @test_nowarn begin fcs = loadFCControls("testdata/FlowRepository_FR-FCM-Z2SS_files")
-        channelnames = CSV.read("testdata/FlowRepository_FR-FCM-Z2SS_files/attachments/fcs_control.csv",DataFrame)
-        channelnames = Dict([i=>String(j) for (i,j) in eachrow(channelnames[:,["filename","dye"]])])
-        renameControl!(fcs,channelnames)
+#     @test_nowarn begin fcs = loadFCControls("testdata/FlowRepository_FR-FCM-Z2SS_files")
+#         channelnames = CSV.read("testdata/FlowRepository_FR-FCM-Z2SS_files/attachments/fcs_control.csv",DataFrame)
+#         channelnames = Dict([i=>String(j) for (i,j) in eachrow(channelnames[:,["filename","dye"]])])
+#         renameControl!(fcs,channelnames)
 
-        Compensation.computeCompensationMatrix!(fcs)
-    end
+#         Compensation.computeCompensationMatrix!(fcs)
+#     end
 
-    @test_nowarn begin fcs = loadFCControls("testdata/FlowRepository_FR-FCM-Z2SS_files")
-        channelnames = CSV.read("testdata/FlowRepository_FR-FCM-Z2SS_files/attachments/fcs_control.csv",DataFrame)
-        channelnames = Dict([i=>String(j) for (i,j) in eachrow(channelnames[:,["filename","dye"]])])
-        renameControl!(fcs,channelnames)
+#     @test_nowarn begin fcs = loadFCControls("testdata/FlowRepository_FR-FCM-Z2SS_files")
+#         channelnames = CSV.read("testdata/FlowRepository_FR-FCM-Z2SS_files/attachments/fcs_control.csv",DataFrame)
+#         channelnames = Dict([i=>String(j) for (i,j) in eachrow(channelnames[:,["filename","dye"]])])
+#         renameControl!(fcs,channelnames)
 
-        Compensation.computeCompensationMatrix!(fcs)
+#         Compensation.computeCompensationMatrix!(fcs)
 
-        Compensation.compensate!(fcs)
-    end
+#         Compensation.compensate!(fcs)
+#     end
 
-    @test_nowarn begin 
-        fcs = loadFCExperiment("testdata/FlowRepository_FR-FCM-Z2SS_files/Compensation Controls_APC-R700 Stained Control_007.fcs")
-        fcsControl = loadFCControls("testdata/FlowRepository_FR-FCM-Z2SS_files")
-        channelnames = CSV.read("testdata/FlowRepository_FR-FCM-Z2SS_files/attachments/fcs_control.csv",DataFrame)
-        channelnames = Dict([i=>String(j) for (i,j) in eachrow(channelnames[:,["filename","dye"]])])
-        renameControl!(fcsControl,channelnames)
+#     @test_nowarn begin 
+#         fcs = loadFCExperiment("testdata/FlowRepository_FR-FCM-Z2SS_files/Compensation Controls_APC-R700 Stained Control_007.fcs")
+#         fcsControl = loadFCControls("testdata/FlowRepository_FR-FCM-Z2SS_files")
+#         channelnames = CSV.read("testdata/FlowRepository_FR-FCM-Z2SS_files/attachments/fcs_control.csv",DataFrame)
+#         channelnames = Dict([i=>String(j) for (i,j) in eachrow(channelnames[:,["filename","dye"]])])
+#         renameControl!(fcsControl,channelnames)
 
-        Compensation.computeCompensationMatrix!(fcsControl)
+#         Compensation.computeCompensationMatrix!(fcsControl)
 
-        Compensation.compensate!(fcs,control=fcsControl)
-    end
+#         Compensation.compensate!(fcs,control=fcsControl)
+#     end
 
-    @test_nowarn begin 
-        fcs = loadFCExperiment("testdata/FlowRepository_FR-FCM-Z2SS_files/Compensation Controls_APC-R700 Stained Control_007.fcs")
-        fcsControl = loadFCControls("testdata/FlowRepository_FR-FCM-Z2SS_files")
-        channelnames = CSV.read("testdata/FlowRepository_FR-FCM-Z2SS_files/attachments/fcs_control.csv",DataFrame)
-        channelnames = Dict([i=>String(j) for (i,j) in eachrow(channelnames[:,["filename","dye"]])])
-        renameControl!(fcsControl,channelnames)
+#     @test_nowarn begin 
+#         fcs = loadFCExperiment("testdata/FlowRepository_FR-FCM-Z2SS_files/Compensation Controls_APC-R700 Stained Control_007.fcs")
+#         fcsControl = loadFCControls("testdata/FlowRepository_FR-FCM-Z2SS_files")
+#         channelnames = CSV.read("testdata/FlowRepository_FR-FCM-Z2SS_files/attachments/fcs_control.csv",DataFrame)
+#         channelnames = Dict([i=>String(j) for (i,j) in eachrow(channelnames[:,["filename","dye"]])])
+#         renameControl!(fcsControl,channelnames)
 
-        Compensation.computeCompensationMatrix!(fcsControl)
-        Compensation.assignCompensation!(fcs,control=fcsControl)
-        #Compensation.compensate!(fcs)
-    end
+#         Compensation.computeCompensationMatrix!(fcsControl)
+#         Compensation.assignCompensation!(fcs,control=fcsControl)
+#         #Compensation.compensate!(fcs)
+#     end
 
-end
+# end
 
 # @testset "DimensionalityReduction" begin
 
@@ -164,18 +164,21 @@ end
 
 # end
 
-# @testset "Clustering" begin
+@testset "Clustering" begin
 
-#     fcs = FlowCytometryExperiment([rand(10,15);rand(10,15).+[10 0 0 0 0 0 0 0 0 0 0 0 0 0 0]])
-#     fcs.var[:,"useChannels"] = [true,true,true,true,true,false,false,false,false,false,false,false,false,false,false]
+    fcs = FlowCytometryExperiment([rand(10,15);rand(10,15).+[10 0 0 0 0 0 0 0 0 0 0 0 0 0 0]])
+    fcs.var[:,"useChannels"] = [true,true,true,true,true,false,false,false,false,false,false,false,false,false,false]
 
-#     @test_nowarn Clustering.kmeansTuning(fcs, n_clusters=[1,2,3,4,5])
-#     @test begin l = Clustering.kmeansTuning(fcs, n_clusters=[1,2,3,4,5]); sum(l.>20) == 2 end
+    # @test_nowarn Clustering.kmeansTuning(fcs, n_clusters=[1,2,3,4,5])
+    # @test begin l = Clustering.kmeansTuning(fcs, n_clusters=[1,2,3,4,5]); sum(l.>20) == 2 end
 
-#     @test_nowarn Clustering.kmeans!(fcs, n_clusters=2)
-#     @test begin Clustering.kmeans!(fcs, n_clusters=2); all((fcs.obs[:,"kmeans"] .== fcs.obs[:,"kmeans"])[1:10]) && all((fcs.obs[:,"kmeans"] .== fcs.obs[end,"kmeans"])[11:end]) end
+    # @test_nowarn Clustering.kmeans!(fcs, n_clusters=2)
+    # @test begin Clustering.kmeans!(fcs, n_clusters=2); all((fcs.obs[:,"kmeans"] .== fcs.obs[:,"kmeans"])[1:10]) && all((fcs.obs[:,"kmeans"] .== fcs.obs[end,"kmeans"])[11:end]) end
 
-#     @test_nowarn Clustering.agglomerative!(fcs, n_clusters=2)
-#     @test begin Clustering.agglomerative!(fcs, n_clusters=2); all((fcs.obs[:,"kmeans"] .== fcs.obs[:,"kmeans"])[1:10]) && all((fcs.obs[:,"kmeans"] .== fcs.obs[end,"kmeans"])[11:end]) end
+    # @test_nowarn Clustering.agglomerative!(fcs, n_clusters=2)
+    # @test begin Clustering.agglomerative!(fcs, n_clusters=2); all((fcs.obs[:,"kmeans"] .== fcs.obs[:,"kmeans"])[1:10]) && all((fcs.obs[:,"kmeans"] .== fcs.obs[end,"kmeans"])[11:end]) end
 
-# end
+    @test_nowarn Clustering.gaussianMixture!(fcs, n_clusters=2)
+    @test begin Clustering.gaussianMixture!(fcs, n_clusters=2); all((fcs.obs[:,"gaussianMixture"] .== fcs.obs[:,"gaussianMixture"])[1:10]) && all((fcs.obs[:,"gaussianMixture"] .== fcs.obs[end,"gaussianMixture"])[11:end]) end
+
+end

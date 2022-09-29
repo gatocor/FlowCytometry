@@ -170,6 +170,46 @@ Launch an interactive page accessible at localhost to define gates manually.
         return
     end
 
+    function convexHull(x,y)
+
+        #Find initial points p
+        p = findall(y.==findmin(y)[1])
+        if length(p)>1 #remove ties
+            p = findmin(x[p])[2]
+        else
+            p = p[1]
+        end
+    
+        #Compute angles
+        angle(p0,p1) = (p1[1]-p0[1])/sqrt((p1[1]-p0[1])^2+(p1[2]-p0[2])^2)
+        angles = zeros(length(x))
+        for i in 1:length(x)
+            angles[i] = angle((x[p],y[p]),(x[i],y[i]))
+        end
+    
+        #Sort by visit
+        order = sortperm(-angles)
+    
+        #Make hull
+        turnRight(p0,p1,p2) = ((p1[1]-p0[1])*(p2[2]-p1[2])-(p2[1]-p1[1])*(p1[2]-p0[2])) < 0
+        p0 = (x[p],y[p])
+        p1 = x[order[1]],y[order[1]]
+        hull = [p0,p1]
+        for i in order[2:end-1]
+            p2 = (x[i],y[i])
+            while turnRight(p0,p1,p2) #Turn right, remove previous point 
+                pop!(hull)
+                p1 = hull[end]
+                p0 = hull[end-1]
+            end
+            push!(hull,p2)
+            p0 = p1
+            p1 = p2
+        end
+    
+        return hull
+    end
+
 """
     function automaticQC!(fcs::FlowCytometryExperiment;
         channel1="FSC-A",channel2="SSC-A",

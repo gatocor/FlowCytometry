@@ -54,4 +54,5 @@ DimensionalityReduction.umap!
 Clustering.kmeans!
 Clustering.kmeansTuning
 Clustering.agglomerative!
+Clustering.gaussianMixture!
 ```

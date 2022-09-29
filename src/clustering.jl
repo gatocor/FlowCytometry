@@ -1,6 +1,6 @@
 module Clustering
 
-    using FlowCytometry, MLJ
+    using FlowCytometry, MLJ, Statistics, LinearAlgebra
 
     kmeans_ = MLJ.@load KMeans pkg=ScikitLearn verbosity=0
     agglomerative_ = MLJ.@load AgglomerativeClustering pkg=ScikitLearn verbosity=0
@@ -92,7 +92,7 @@ A plot of clusters vs inertia can help to choose the optimal number of clusters 
                         init=init
                         )
             mach = machine(model,X,scitype_check_level=0)
-            fit!(mach)
+            fit!(mach,verbosity=0)
             inertia[i] = fitted_params(mach)[3]
         end
         
@@ -288,6 +288,170 @@ Function that clusters the data using the AgglomerativeClustering algorithm.
                                 ])
         
         return
+    end
+
+    function closerPoints(X::Matrix,centers::Matrix)
+        if size(X)[2] != size(centers)[2]
+            error("Second dimension")
+        end
+        d = zeros(size(X)[1],size(centers)[1])
+
+        for i in 1:size(X)[1]
+            x = @views X[i,:]
+            for j in 1:size(centers)[1]
+                c = @views centers[j,:]
+                d[i,j] = sum((x.-c).^2)
+            end
+        end
+
+        return Matrix([i[2] for i in argmin(d,dims=2)])[:,1]
+    end
+
+    function gmloglikelihood!(p::Matrix,X::Matrix,centers::Matrix,covariances::Vector,weights::Vector)
+
+        for j in 1:size(centers)[1]
+            c = @views centers[j,:]
+            sigma = covariances[j]
+            sigmaInv = inv(sigma)
+            determinant = abs(det(sigma))
+            w = weights[j]
+            for i in 1:size(X)[1]
+                x = @views X[i,:]
+                m = (x-c).^2
+                p[i,j] = -(transpose(m)*sigmaInv*m/2)[1]-log(determinant)/2+log(w)
+            end
+        end
+
+        return
+    end
+
+"""
+    function gaussianMixture!(fct::FlowCytometryExperiment;
+        n_clusters::Int,
+        initialization::Union{String,Matrix} = "kmeans",
+        maximumSteps::Int = 10000,
+        key_added::String = "gaussianMixture",
+        key_obsm::Union{Nothing,String} = nothing,
+        n_components::Union{Nothing,Int} = nothing,
+        key_used_channels::Union{Nothing,String} = nothing                                
+        )
+
+Clustering with multivariate gaussian distributions.
+
+**Arguments**
+ - **fct::FlowCytometryExperiment** FlowCytometryExperiment to cluster the data.
+
+**Keyword Arguments**
+ - **n_clusters::Int** Number of clusters of the model.
+ - **initialization::Union{String,Matrix} = "kmeans"** Initialization. Select between "kmeans", "random" or give a matrix of (n_clusters,dimensions)
+ - **maximumSteps::Int = 10000** Number of maximum of steps before stopping the algorithm.
+ - **key_added::String = "KMeans"** Key to be added to object.
+ - **key_obsm::Union{Nothing,String} = nothing** Matrix in .obsm to use for the clustering. Only key_obsm or key_used_channels can be specified.
+ - **n_components::Union{Nothing,Int} = nothing** Number of components to use from the .obsm.
+ - **key_used _channels::Union{Nothing,String} = nothing** Bool column from .var specifying which channels to use for clustering.
+
+ **Returns**
+ Nothing. To the FlowCytometryExperiment object provided, clusters identities are added to the .obs[key_added] and information of the algorithm if included in .uns[key_added].
+"""
+    function gaussianMixture!(fct::FlowCytometryExperiment;
+                                n_clusters::Int,
+                                initialization::Union{String,Matrix} = "kmeans",
+                                maximumSteps::Int = 10000,
+                                key_added::String = "gaussianMixture",
+                                key_obsm::Union{Nothing,String} = nothing,
+                                n_components::Union{Nothing,Int} = nothing,
+                                key_used_channels::Union{Nothing,String} = nothing                                
+                                )
+
+        if key_obsm !== nothing && key_used_channels !== nothing
+            error("key_obsm and key_used_channels cannot be specified at the same time.")
+        elseif key_obsm !== nothing
+            if n_components !== nothing
+                X = fct.obsm[key_obsm][:,1:n_components]
+            else
+                X = fct.obsm[key_obsm]
+            end
+        else
+            if key_used_channels !== nothing
+                channels = fct.var[:,key_used_channels]
+                if typeof(channels) != Vector{Bool}
+                    error("key_used_channels should be a column in var of Bool entries specifying which channels to use for clustering.")
+                end
+
+                X = fct.X[:,channels]
+            else
+                X = fct.X
+            end
+        end
+
+        #Check shape of initial centers
+        if typeof(initialization) == Matrix
+            if size(initialisation) != (n_clusters,size(X)[2])
+                error("If initialization is a matrix of given initial positions, the dimensions must be the same size as (n_clusters,variables).")
+            end
+        end
+
+        nCells = size(X)[1]
+
+        #Initialization centers
+        centers = zeros(n_clusters,size(X)[2])
+        if initialization == "kmeans"
+            model = kmeans_(n_clusters=n_clusters)
+            mach = machine(model,X,scitype_check_level=0)
+            fit!(mach,verbosity=0)
+            centers = fitted_params(mach)[1]
+        elseif initialization == "random"
+            centers = rand(n_clusters,size(X)[2])
+            centers .= centers .* (maximum(X,dims=1).-minimum(X,dims=1)) .-minimum(X,dims=1)
+        elseif typeof(initialization) == Matrix
+            centers .= initialization
+        else
+            error("initialization must be 'kmeans', 'random' or a matrix of specifying the centers of the gaussian.")
+        end
+        #Initialization of identities
+        identities = closerPoints(X,centers)
+        #Initialization of covariances
+        covariances = []
+        for id in 1:n_clusters
+            push!(covariances,cov(@views X[identities.==id,:]))
+        end
+        #Initialization of weights
+        weights = [sum(identities.==id)/nCells for id in 1:n_clusters]
+
+        #Loop
+        p = zeros(nCells,n_clusters)
+        steps = 0
+        identitiesNew = fill(0,nCells)
+        while !all(identities.==identitiesNew) && steps < maximumSteps
+            identities .= identitiesNew
+            #Maximization step
+            gmloglikelihood!(p,X,centers,covariances,weights)
+            identitiesNew .= Matrix([i[2] for i in argmax(p,dims=2)])[:,1]
+            #Expectation step
+            for i in 1:n_clusters
+                ids = identitiesNew.==i
+
+                weights[i] = sum(ids)/nCells
+                if weights[i] > 0            
+                    centers[i,:] .= mean(X[ids,:],dims=1)[1,:]
+                    covariances[i] .= cov(X[ids,:])
+                end
+            end
+            steps += 1
+        end
+
+        fct.uns[key_added] = Dict([
+            "n_clusters" => n_clusters,
+            "maximumSteps" => maximumSteps,
+            "stepsBeforeConvergence" => steps,
+            "initialization" => initialization,
+            "weights" => p
+        ])
+
+        fct.obs[!,key_added] = identitiesNew
+
+        return
+
     end
 
 end
