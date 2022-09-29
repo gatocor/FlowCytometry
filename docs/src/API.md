@@ -31,6 +31,7 @@ loadFCControls
 ```@docs
 Gating.isInsideGate
 Gating.manualGating!
+Gating.automaticQC!
 ```
 
 ## Compensation (Spillover/Unmixing)

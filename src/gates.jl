@@ -170,7 +170,47 @@ Launch an interactive page accessible at localhost to define gates manually.
         return
     end
 
-    function automaticQC(fcs::FlowCytometryExperiment;channel1="FSC-A",channel2="SSC-A",trim::Tuple{<:Real,<:Real}=(0.01,0.99),maxtrim::Real=.05,bandwidth::Tuple{<:Real,<:Real}=(.05,.05),hull=.05,pBorder=.33)
+"""
+    function automaticQC!(fcs::FlowCytometryExperiment;
+        channel1="FSC-A",channel2="SSC-A",
+        trim::Tuple{<:Real,<:Real}=(0.01,0.99),
+        maxtrim::Real=.05,
+        densityBandwidth::Tuple{<:Real,<:Real}=(.1,.05),
+        hullBandwidth=.03,
+        hullBorderFromMax=.3,
+        keyAdded="automaticQC",
+        flavor="gaussian")
+
+Function that automatically detects the main peak corresponding to viable cells in a FCS/SSC scatterplot and adds a gate to the object. 
+The method follows the heuristics of [Roca et al](https://www.nature.com/articles/s41467-021-23126-8) with some small adaptations.
+
+**Arguments**
+ - **fcs::FlowCytometryExperiment** FlowCytometryExperiment where to compute the gate
+
+**Keyword arguments**
+ - **channel1="FSC-A"** Channel name in channels corrresponding to the forwad scatter
+ - **channel2="SSC-A"** Channel name in channels corrresponding to the forwad scatter
+ - **trim::Tuple{<:Real,<:Real}=(0.01,0.99)** Window of used cells in the channel ranges before finding maximums.
+ - **maxtrim::Real=.05** Minimum in the range channels where to accept maximum points. This avoids the peak pressent in some datasets at lower expressions (debris).
+ - **densityBandwidth::Tuple{<:Real,<:Real}=(.1,.05)** Bandwidth as proportion of the total range to smooth the data before finding peaks.
+ - **hullBandwidth=.03** Bandwidth as proportion of the total range to smooth the data before finding the hull neighborhood. Only used if flavor = "classic".
+ - **hullBorderFromMax=.3** Heigh from global maximum. Points with more probability that that will be used to make the hull.
+ - **keyAdded="automaticQC"** Key added to uns and gate name.
+ - **flavor="gaussian"** Flavor of the algorithm. Choose between "gaussian" or "classic", that corresponds to the implementation from the original paper.
+
+**Returns**
+Nothing. A gate of automatic control is added to gates.
+
+"""
+    function automaticQC!(fcs::FlowCytometryExperiment;
+                        channel1="FSC-A",channel2="SSC-A",
+                        trim::Tuple{<:Real,<:Real}=(0.01,0.99),
+                        maxtrim::Real=.05,
+                        densityBandwidth::Tuple{<:Real,<:Real}=(.1,.05),
+                        hullBandwidth=.03,
+                        hullBorderFromMax=.3,
+                        keyAdded="automaticQC",
+                        flavor="gaussian")
 
         #Check channels are present
         if !(channel1 in fcs.channels)
@@ -179,26 +219,41 @@ Launch an interactive page accessible at localhost to define gates manually.
             error(channel2, " is no in channels.")
         end
 
+        #Make dictionary step results
+        dic = Dict{String,Any}()
+    
+        #Extract channels
         x = fcs[channel1]
         y = fcs[channel2]
     
         #Remove extrema
         xlims = sort(x)[[Int(round(trim[1]*length(x))),Int(round(trim[2]*length(x)))]]
         ylims = sort(y)[[Int(round(trim[1]*length(y))),Int(round(trim[2]*length(y)))]]
-        xMaxTrim = sort(x)[Int(round(trim[1]*length(x)))]
-        yMaxTrim = sort(y)[Int(round(trim[1]*length(x)))]
+        xMaxTrim = sort(x)[Int(round(maxtrim*length(x)))]
+        yMaxTrim = sort(y)[Int(round(maxtrim*length(x)))]
         keepMaxTrim = (x .>= xMaxTrim[1]) .& (y .>= yMaxTrim[1]) 
         keep = (x .>= xlims[1]) .& (x .<= xlims[2]) .& (y .>= ylims[1]) .& (y .<= ylims[2])
+        dic["Step1_TrimOutliers"] = [(xlims[1],ylims[1]),(xlims[2],ylims[1]),(xlims[2],ylims[2]),(xlims[1],ylims[2])]
+        dic["Step2_ExcludeMaximums"] = [(xMaxTrim[1],yMaxTrim[1]),(xlims[2],yMaxTrim[1]),(xlims[2],ylims[2]),(xMaxTrim[1],ylims[2])]
     
-        bandwidth = [sum([maximum(x[keep])-minimum(x[keep]),maximum(y[keep])-minimum(y[keep])])/2*i for i in bandwidth]
-        hull = sum([maximum(x[keep])-minimum(x[keep]),maximum(y[keep])-minimum(y[keep])])/2*hull
+        #Scale bandwidths
+        densityBandwidthScaled = [sum([maximum(x[keep])-minimum(x[keep]),maximum(y[keep])-minimum(y[keep])])/2*i for i in densityBandwidth]
+        hullBandwidthScaled = sum([maximum(x[keep])-minimum(x[keep]),maximum(y[keep])-minimum(y[keep])])/2*hullBandwidth
+        dic["densityBandwidth"] = densityBandwidth
+        dic["hullBandwidth"] = hullBandwidth
+        dic["densityBandwidthScaled"] = densityBandwidthScaled
+        dic["hullBandwidthScaled"] = hullBandwidthScaled
+        
+        #Initialize arrays
         active = fill(false,length(x))
         active[keep] .= true
         rectKeep = fill(false,length(x))
     
-        for (k,band) in enumerate(bandwidth)
-            #Find center
-            density = zeros(length(x))
+        step = 3
+        for (k,band) in enumerate(densityBandwidthScaled)
+        
+            density = ones(length(x))
+            density[active] .= 0.
             #Weight all points
             @inbounds for i in 1:length(x)
                 if active[i]
@@ -209,6 +264,10 @@ Launch an interactive page accessible at localhost to define gates manually.
                     end
                 end
             end
+            if keyAdded !== nothing
+                fcs.obs[!,string(keyAdded,"_density",k)] = copy(density)
+            end
+        
             #Find local maximum
             @inbounds for i in 1:(length(x)-1)
                 @inbounds for j in (i+1):length(x)
@@ -221,11 +280,17 @@ Launch an interactive page accessible at localhost to define gates manually.
                     end
                 end
             end
+        
             #Find global maximum excluding low maximums
             maximums = findall(active)
             trimmedMaximums = [i for i in maximums if keepMaxTrim[i]]
             maxMaximum = maximums[findmax(density[trimmedMaximums])[2]]
             othermaximums = [i for i in maximums if i != maxMaximum]
+            dic[string("Step",step,"_LocalMaximums")] = (x[maximums],y[maximums])
+            dic[string("Step",step+1,"_GlobalMaximum")] = (x[maxMaximum],y[maxMaximum])
+            step += 2
+        
+            #Tesseltation
             pointsFromMaximum = fill(true,size(fcs.obs)[1])
             pointsFromMaximum[.!(keep)] .= false
             @inbounds for i in 1:length(x)
@@ -236,15 +301,20 @@ Launch an interactive page accessible at localhost to define gates manually.
                     end
                 end
             end
+            dic[string("Step",step,"_Tesselation")] = convexHull(x[pointsFromMaximum],y[pointsFromMaximum])
+            step += 1
         
-            if k != length(bandwidth)
-                #Find rectangle
+            #Find rectangle
+            if k != length(densityBandwidth)
                 rectXmin = x[maxMaximum]-3*std(x[pointsFromMaximum])
                 rectXmax = x[maxMaximum]+3*std(x[pointsFromMaximum])
                 rectYmin = y[maxMaximum]-3*std(y[pointsFromMaximum])
                 rectYmax = y[maxMaximum]+3*std(y[pointsFromMaximum])
                 rectKeep = (x .>= rectXmin) .& (x .<= rectXmax) .& (y .>= rectYmin) .& (y .<= rectYmax)
                 active = rectKeep .& keep
+            
+                dic[string("Step",step,"_Rectangle")] = [(rectXmin,rectYmin),(rectXmax,rectYmin),(rectXmax,rectYmax),(rectXmin,rectYmax)]
+                step += 1
             else
                 active = pointsFromMaximum .& rectKeep #In the last approximation just keep the tesselation and box
             end
@@ -253,26 +323,43 @@ Launch an interactive page accessible at localhost to define gates manually.
         end
     
         density = zeros(length(x))
-        #Weight all points
-        @inbounds for i in 1:length(x)
-            if active[i]
-                @inbounds for j in 1:length(x)
-                    if active[j]
-                        density[i] += exp(-((x[i]-x[j])^2+(y[i]-y[j])^2)/(2*hull))
+        if flavor == "classic"
+            #Weight all points
+            @inbounds for i in 1:length(x)
+                if active[i]
+                    @inbounds for j in 1:length(x)
+                        if active[j]
+                            density[i] += exp(-((x[i]-x[j])^2+(y[i]-y[j])^2)/(2*hullBandwidthScaled))
+                        end
                     end
                 end
             end
+        elseif flavor == "gaussian"    
+            X = [x[active] y[active]]
+            m = mean(X,dims=1)
+            M = inv(cov(X))
+
+            for i in 1:length(x)
+                point = [x[i] y[i]]
+                density[i] = exp(-(point-m)*M*transpose((point-m))/2)[1]
+            end
+        else
+            error("flavor must be `gaussian` or `classic`")
         end
-        
-        pointsInHull = (maximum(density)*pBorder .<= density) #.& active
-    
-        p = findall(x[pointsInHull].==findmin(y)[1])
-        if length(p)>1 #remove ties
-            p = findmin(x[p])[2]
+
+        if keyAdded !== nothing
+            fcs.obs[!,string(keyAdded,"_hullDensity")] = copy(density)
         end
+
+        #Find points in the limit from maximum
+        pointsInHull = (maximum(density)*hullBorderFromMax .<= density) #.& active
     
-        return pointsInHull
+        hull = convexHull(x[pointsInHull],y[pointsInHull])
+        fcs.gates[keyAdded] = FlowCytometryGate((channel1,channel2),hull)
     
+        fcs.uns[keyAdded] = dic
+    
+        return x[active], y[active]
     end
 
 end
