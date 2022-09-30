@@ -1,2 +1,3 @@
 docs/build
 manual_tests
+test/*.h5fcs

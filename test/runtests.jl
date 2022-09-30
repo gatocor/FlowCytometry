@@ -61,21 +61,6 @@ using CSV
 #     @test_throws ErrorException FlowCytometryExperiment(ones(10,10),obs=DataFrame(:a=>1:3))
 #     @test_throws ErrorException FlowCytometryExperiment(ones(10,10),var=DataFrame(:a=>1:3))
 
-#     @test_nowarn loadFCExperiment("testdata/BD-FACS-Aria-II.fcs")
-#     @test_nowarn loadFCControls("testdata/FlowRepository_FR-FCM-Z2SS_files")
-#     @test_nowarn loadFCControls(Dict([
-#                                     "testdata/FlowRepository_FR-FCM-Z2SS_files/Compensation Controls_APC-R700 Stained Control_007.fcs"=>"APC-R700",
-#                                     "testdata/FlowRepository_FR-FCM-Z2SS_files/Compensation Controls_APC-H7 Stained Control_008.fcs"=>"APC-H7"
-#                                     ]
-#                                     )
-#                                 )
-#     @test_nowarn begin fcs = loadFCControls("testdata/FlowRepository_FR-FCM-Z2SS_files")
-#         channelnames = CSV.read("testdata/FlowRepository_FR-FCM-Z2SS_files/attachments/fcs_control.csv",DataFrame)
-#         channelnames = Dict([i=>String(j) for (i,j) in eachrow(channelnames[:,["filename","dye"]])])
-#         renameControl!(fcs,channelnames)
-#         checkControlNames(fcs)
-#     end
-
 #     @test_nowarn begin m = FlowCytometryExperiment(ones(10,10)); m.obs = DataFrame(:a=>ones(10)) end
 #     @test_nowarn begin m = FlowCytometryExperiment(ones(10,10)); m.var = DataFrame(:a=>ones(10)) end
 #     @test_nowarn begin m = FlowCytometryExperiment(ones(10,10)); m.X = zeros(10,10) end
@@ -99,6 +84,84 @@ using CSV
 #     @test begin m = FlowCytometryExperiment([1 2 3].*ones(10,3),channels=["A","B","C"]); m["B"] == 2 .*ones(10) end
 
 # end
+
+@testset "IO" begin
+
+    @test_nowarn loadFCExperiment("testdata/BD-FACS-Aria-II.fcs")
+    @test_nowarn loadFCControls("testdata/FlowRepository_FR-FCM-Z2SS_files")
+    @test_nowarn loadFCControls(Dict([
+                                    "testdata/FlowRepository_FR-FCM-Z2SS_files/Compensation Controls_APC-R700 Stained Control_007.fcs"=>"APC-R700",
+                                    "testdata/FlowRepository_FR-FCM-Z2SS_files/Compensation Controls_APC-H7 Stained Control_008.fcs"=>"APC-H7"
+                                    ]
+                                    )
+                                )
+    @test_nowarn begin fcs = loadFCControls("testdata/FlowRepository_FR-FCM-Z2SS_files")
+        channelnames = CSV.read("testdata/FlowRepository_FR-FCM-Z2SS_files/attachments/fcs_control.csv",DataFrame)
+        channelnames = Dict([i=>String(j) for (i,j) in eachrow(channelnames[:,["filename","dye"]])])
+        renameControl!(fcs,channelnames)
+        checkControlNames(fcs)
+    end
+
+    @test_nowarn saveH5fcs(FlowCytometryExperiment(rand(10,10)),"test")
+    @test_nowarn begin 
+        fcs = FlowCytometryExperiment(rand(10,10))
+        fcs.obs[:,"h"] .= 1
+        fcs.var[:,"h"] .= 1
+        fcs.obsm["f"] = rand(3,3)
+        fcs.layers["5"] = rand(2,2)
+        fcs.gates["5"] = FlowCytometryGate(("1","2"),[(1,2),(2,3),(3,2)])
+        fcs.uns["f"] = Dict(["d"=>[(1,2)]])
+        saveH5fcs(fcs,"test") 
+    end
+    @test_nowarn begin 
+        fcs = FlowCytometryExperiment(rand(10,10))
+        fcsControl = FlowCytometryControl()
+        fcsControl.channels = fcs.channels
+        fcsControl.controls["a"] = fcs
+        fcsControl.compensationMatrix = nothing
+        fcsControl.uns["s"] = "s"
+        saveH5fcs(fcsControl,"test") 
+    end
+    @test_nowarn begin saveH5fcs(FlowCytometryExperiment(rand(10,10)),"test"); loadH5fcs("test.h5fcs") end 
+    @test_nowarn begin 
+        fcs = FlowCytometryExperiment(rand(10,10))
+        fcs.obs[:,"h"] .= 1
+        fcs.var[:,"h"] .= 1
+        fcs.obsm["f"] = rand(3,3)
+        fcs.layers["5"] = rand(2,2)
+        fcs.gates["5"] = FlowCytometryGate(("1","2"),[(1,2),(2,3),(3,2)])
+        fcs.uns["f"] = Dict(["d"=>[(1,2)]])
+        saveH5fcs(fcs,"test") 
+        loadH5fcs("test.h5fcs")
+    end
+    @test begin fcs = FlowCytometryExperiment(rand(10,10)); 
+                saveH5fcs(fcs,"test"); 
+                fcsLoaded = loadH5fcs("test.h5fcs"); 
+                all(fcs.channels .== fcsLoaded.channels) && 
+                all(fcs.obs[:,:cell] .== fcsLoaded.obs[:,:cell]) &&
+                all(fcs.var[:,:channel] .== fcsLoaded.var[:,:channel])
+        end 
+    @test begin 
+        fcs = FlowCytometryExperiment(rand(10,10))
+        fcs.obs[:,"h"] .= 1
+        fcs.var[:,"h"] .= 1
+        fcs.obsm["f"] = rand(3,3)
+        fcs.layers["5"] = rand(2,2)
+        fcs.gates["5"] = FlowCytometryGate(("1","2"),[(1,2),(2,3),(3,2)])
+        fcs.uns["f"] = Dict(["d"=>[(1,2)]])
+        saveH5fcs(fcs,"test") 
+        fcsLoaded = loadH5fcs("test.h5fcs"); 
+        all(fcs.channels .== fcsLoaded.channels) && 
+        all(fcs.obs[:,:h] .== fcsLoaded.obs[:,:h]) &&
+        all(fcs.var[:,:h] .== fcsLoaded.var[:,:h]) &&
+        all(fcs.obsm["f"] .== fcsLoaded.obsm["f"]) &&
+        all(fcs.layers["5"] .== fcsLoaded.layers["5"]) &&
+        all(fcs.gates["5"].channels .== fcsLoaded.gates["5"].channels) &&
+        all(fcs.gates["5"].polygon .== fcsLoaded.gates["5"].polygon) &&
+        all(fcs.uns["f"]["d"] .== fcsLoaded.uns["f"]["d"])
+end
+
+end
 
 # @testset "Compensation" begin
     
@@ -164,21 +227,22 @@ using CSV
 
 # end
 
-@testset "Clustering" begin
-
-    fcs = FlowCytometryExperiment([rand(10,15);rand(10,15).+[10 0 0 0 0 0 0 0 0 0 0 0 0 0 0]])
-    fcs.var[:,"useChannels"] = [true,true,true,true,true,false,false,false,false,false,false,false,false,false,false]
+# @testset "Clustering" begin
+# 
+    # fcs = FlowCytometryExperiment([rand(10,15);rand(10,15).+[10 0 0 0 0 0 0 0 0 0 0 0 0 0 0]])
+    # fcs.var[:,"useChannels"] = [true,true,true,true,true,false,false,false,false,false,false,false,false,false,false]
 
     # @test_nowarn Clustering.kmeansTuning(fcs, k=[1,2,3,4,5])
     # @test begin l = Clustering.kmeansTuning(fcs, k=[1,2,3,4,5]); sum(l.>20) == 2 end
-
-    @test_nowarn Clustering.kmeans!(fcs, k=2)
-    @test begin Clustering.kmeans!(fcs, k=2); all((fcs.obs[:,"kmeans"] .== fcs.obs[:,"kmeans"])[1:10]) && all((fcs.obs[:,"kmeans"] .== fcs.obs[end,"kmeans"])[11:end]) end
-
+# 
+    # @test_nowarn Clustering.kmeans!(fcs, k=2)
+    # @test begin Clustering.kmeans!(fcs, k=2); all((fcs.obs[:,"kmeans"] .== fcs.obs[:,"kmeans"])[1:10]) && all((fcs.obs[:,"kmeans"] .== fcs.obs[end,"kmeans"])[11:end]) end
+# 
     # @test_nowarn Clustering.agglomerative!(fcs, k=2)
     # @test begin Clustering.agglomerative!(fcs, k=2); all((fcs.obs[:,"kmeans"] .== fcs.obs[:,"kmeans"])[1:10]) && all((fcs.obs[:,"kmeans"] .== fcs.obs[end,"kmeans"])[11:end]) end
+# 
+    # @test_nowarn Clustering.gaussianMixture!(fcs, k=2)
+    # @test begin Clustering.gaussianMixture!(fcs, k=2); all((fcs.obs[:,"gaussianMixture"] .== fcs.obs[:,"gaussianMixture"])[1:10]) && all((fcs.obs[:,"gaussianMixture"] .== fcs.obs[end,"gaussianMixture"])[11:end]) end
+# 
+# end
 
-    @test_nowarn Clustering.gaussianMixture!(fcs, k=2)
-    @test begin Clustering.gaussianMixture!(fcs, k=2); all((fcs.obs[:,"gaussianMixture"] .== fcs.obs[:,"gaussianMixture"])[1:10]) && all((fcs.obs[:,"gaussianMixture"] .== fcs.obs[end,"gaussianMixture"])[11:end]) end
-
-end

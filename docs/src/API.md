@@ -24,6 +24,8 @@ checkControlNames
 ```@docs
 loadFCExperiment
 loadFCControls
+saveH5fcs
+loadH5fcs
 ```
 
 ## Gating
