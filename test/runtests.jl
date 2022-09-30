@@ -169,16 +169,16 @@ using CSV
     fcs = FlowCytometryExperiment([rand(10,15);rand(10,15).+[10 0 0 0 0 0 0 0 0 0 0 0 0 0 0]])
     fcs.var[:,"useChannels"] = [true,true,true,true,true,false,false,false,false,false,false,false,false,false,false]
 
-    # @test_nowarn Clustering.kmeansTuning(fcs, n_clusters=[1,2,3,4,5])
-    # @test begin l = Clustering.kmeansTuning(fcs, n_clusters=[1,2,3,4,5]); sum(l.>20) == 2 end
+    # @test_nowarn Clustering.kmeansTuning(fcs, k=[1,2,3,4,5])
+    # @test begin l = Clustering.kmeansTuning(fcs, k=[1,2,3,4,5]); sum(l.>20) == 2 end
 
-    # @test_nowarn Clustering.kmeans!(fcs, n_clusters=2)
-    # @test begin Clustering.kmeans!(fcs, n_clusters=2); all((fcs.obs[:,"kmeans"] .== fcs.obs[:,"kmeans"])[1:10]) && all((fcs.obs[:,"kmeans"] .== fcs.obs[end,"kmeans"])[11:end]) end
+    @test_nowarn Clustering.kmeans!(fcs, k=2)
+    @test begin Clustering.kmeans!(fcs, k=2); all((fcs.obs[:,"kmeans"] .== fcs.obs[:,"kmeans"])[1:10]) && all((fcs.obs[:,"kmeans"] .== fcs.obs[end,"kmeans"])[11:end]) end
 
-    # @test_nowarn Clustering.agglomerative!(fcs, n_clusters=2)
-    # @test begin Clustering.agglomerative!(fcs, n_clusters=2); all((fcs.obs[:,"kmeans"] .== fcs.obs[:,"kmeans"])[1:10]) && all((fcs.obs[:,"kmeans"] .== fcs.obs[end,"kmeans"])[11:end]) end
+    # @test_nowarn Clustering.agglomerative!(fcs, k=2)
+    # @test begin Clustering.agglomerative!(fcs, k=2); all((fcs.obs[:,"kmeans"] .== fcs.obs[:,"kmeans"])[1:10]) && all((fcs.obs[:,"kmeans"] .== fcs.obs[end,"kmeans"])[11:end]) end
 
-    @test_nowarn Clustering.gaussianMixture!(fcs, n_clusters=2)
-    @test begin Clustering.gaussianMixture!(fcs, n_clusters=2); all((fcs.obs[:,"gaussianMixture"] .== fcs.obs[:,"gaussianMixture"])[1:10]) && all((fcs.obs[:,"gaussianMixture"] .== fcs.obs[end,"gaussianMixture"])[11:end]) end
+    @test_nowarn Clustering.gaussianMixture!(fcs, k=2)
+    @test begin Clustering.gaussianMixture!(fcs, k=2); all((fcs.obs[:,"gaussianMixture"] .== fcs.obs[:,"gaussianMixture"])[1:10]) && all((fcs.obs[:,"gaussianMixture"] .== fcs.obs[end,"gaussianMixture"])[11:end]) end
 
 end

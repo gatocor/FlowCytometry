@@ -50,9 +50,9 @@ DimensionalityReduction.umap!
 ```
 ## Clustering
 
+<!-- Clustering.kmeansTuning
+Clustering.agglomerative! -->
 ```@docs
 Clustering.kmeans!
-Clustering.kmeansTuning
-Clustering.agglomerative!
 Clustering.gaussianMixture!
 ```

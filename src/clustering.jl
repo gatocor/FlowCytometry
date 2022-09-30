@@ -1,119 +1,19 @@
 module Clustering
 
-    using FlowCytometry, MLJ, Statistics, LinearAlgebra
+    using FlowCytometry, MLJ, Statistics, LinearAlgebra, Distances
 
-    kmeans_ = MLJ.@load KMeans pkg=ScikitLearn verbosity=0
-    agglomerative_ = MLJ.@load AgglomerativeClustering pkg=ScikitLearn verbosity=0
-
-"""
-    function kmeansTuning(fct::FlowCytometryExperiment;
-                            n_clusters::Vector{Int};,
-                            n_init::Int = 10, 
-                            max_iter::Int = 300, 
-                            tol::Real = 0.0001, 
-                            verbose::Int = 0, 
-                            random_state::Union{Nothing,Int} = nothing, 
-                            copy_x::Bool = true, 
-                            algorithm::String = "auto", 
-                            init::String = "k-means++",
-                            key_obsm::Union{Nothing,String} = nothing,
-                            n_components::Union{Nothing,Int} = nothing,
-                            key_used_channels::Union{Nothing,String} = nothing)
-
-Function that evaluated the KMeans algorithm for different number of clusters and returns the inertia value for each of them. 
-A plot of clusters vs inertia can help to choose the optimal number of clusters using the elbow heuristic.
-
-**Arguments**
- - **fct::FlowCytometryExperiment** FlowCytometryExperiment to cluster the data.
-
-**Keyword Arguments**
- - **n_clusters::Vector{Int}** Vector with the n of cluster partitions to be tested.
- - **n_init::Int = 10** Number of initialisations of the algorithm.
- - **max_iter::Int = 300** Maximum number of steps.
- - **tol::Real = 0.0001** Tolerance step before stopping the algorithm.
- - **verbose::Int = 0** Verbosity of the algorithm. 
- - **random_state::Union{Nothing,Int} = nothing,** Random seed to start the algorithm.
- - **copy_x::Bool = true** If to preserve a copy of X. 
- - **algorithm::String = "auto"** Algorithm for updating the KMeans. 
- - **init::String = "k-means++"** Initialisation algorithm of the KMeans.
- - **key_obsm::Union{Nothing,String} = nothing** Matrix in .obsm to use for the clustering. Only key_obsm or key_used_channels can be specified.
- - **n_components::Union{Nothing,Int} = nothing** Number of components to use from the .obsm.
- - **key_used _channels::Union{Nothing,String} = nothing** Bool column from .var specifying which channels to use for clustering.
- 
-**Returns**
- - Vector with the inertia coeficients for the the different number of clusters checked.
-"""
-    function kmeansTuning(fct::FlowCytometryExperiment;
-                            n_clusters::Vector{Int},
-                            n_init::Int = 10, 
-                            max_iter::Int = 300, 
-                            tol::Real = 0.0001, 
-                            verbose::Int = 0, 
-                            random_state::Union{Nothing,Int} = nothing, 
-                            copy_x::Bool = true, 
-                            algorithm::String = "auto", 
-                            init::String = "k-means++",
-                            key_obsm::Union{Nothing,String} = nothing,
-                            n_components::Union{Nothing,Int} = nothing,
-                            key_used_channels::Union{Nothing,String} = nothing)
-
-        if key_obsm !== nothing && key_used_channels !== nothing
-            error("key_obsm and key_used_channels cannot be specified at the same time.")
-        elseif key_obsm !== nothing
-            if n_components !== nothing
-                X = fct.obsm[key_obsm][:,1:n_components]
-            else
-                X = fct.obsm[key_obsm]
-            end
-        else
-            if key_used_channels !== nothing
-                channels = fct.var[:,key_used_channels]
-                if typeof(channels) != Vector{Bool}
-                    error("key_used_channels should be a column in var of Bool entries specifying which channels to use for clustering.")
-                end
-
-                X = fct.X[:,channels]
-            else
-                X = fct.X
-            end
-        end
-
-        inertia = zeros(length(n_clusters))
-        for (i,clusters) in enumerate(n_clusters)
-            model = kmeans_(
-                        n_clusters=clusters, 
-                        n_init=n_init, 
-                        max_iter=max_iter, 
-                        tol=tol, 
-                        verbose=verbose, 
-                        random_state=random_state, 
-                        copy_x=copy_x, 
-                        algorithm=algorithm, 
-                        init=init
-                        )
-            mach = machine(model,X,scitype_check_level=0)
-            fit!(mach,verbosity=0)
-            inertia[i] = fitted_params(mach)[3]
-        end
-        
-        return inertia
-    end
+    kmeans_ = MLJ.@load KMeans pkg=Clustering verbosity=0
+    # agglomerative_ = MLJ.@load AgglomerativeClustering pkg=ScikitLearn verbosity=0
 
 """
     function kmeans!(fct::FlowCytometryExperiment;
-                      n_clusters::Int = 2, 
-                      n_init::Int = 10, 
-                      max_iter::Int = 300, 
-                      tol::Real = 0.0001, 
-                      verbose::Int = 0, 
-                      random_state::Union{Nothing,Int} = nothing, 
-                      copy_x::Bool = true, 
-                      algorithm::String = "auto", 
-                      init::String = "k-means++",
-                      key_added::String = "KMeans",
-                      key_obsm::Union{Nothing,String} = nothing,
-                      n_components::Union{Nothing,Int} = nothing,
-                      key_used_channels::Union{Nothing,String} = nothing)
+        k::Int = 2, 
+        metric = Distances.SqEuclidean(0.0),
+        init::Symbol = :kmpp,
+        key_added::String = "kmeans",
+        key_obsm::Union{Nothing,String} = nothing,
+        n_components::Union{Nothing,Int} = nothing,
+        key_used_channels::Union{Nothing,String} = nothing)
 
 
 Function that clusters the data using the KMeans algorithm.
@@ -123,15 +23,9 @@ To help asses the number of clusters you can use **KMeansTuning** function.
  - **fct::FlowCytometryExperiment** FlowCytometryExperiment to cluster the data.
 
 **Keyword Arguments**
- - **n_clusters::Int** Number of clusters to partition the data.
- - **n_init::Int = 10** Number of initialisations of the algorithm.
- - **max_iter::Int = 300** Maximum number of steps.
- - **tol::Real = 0.0001** Tolerance step before stopping the algorithm.
- - **verbose::Int = 0** Verbosity of the algorithm. 
- - **random_state::Union{Nothing,Int} = nothing,** Random seed to start the algorithm.
- - **copy_x::Bool = true** If to preserve a copy of X. 
- - **algorithm::String = "auto"** Algorithm for updating the KMeans. 
- - **init::String = "k-means++"** Initialisation algorithm of the KMeans.
+ - **k::Int** Number of clusters to partition the data.
+ - **metric = Distances.SqEuclidean(0.0)** Metric to compute distances. 
+ - **init::Symbol = :kmpp** Initialisation algorithm of the KMeans. Choose between :kmpp, :rand or :kmenc. ?Clustering.kmeans_ for more information.
  - **key_added::String = "KMeans"** Key to be added to object.
  - **key_obsm::Union{Nothing,String} = nothing** Matrix in .obsm to use for the clustering. Only key_obsm or key_used_channels can be specified.
  - **n_components::Union{Nothing,Int} = nothing** Number of components to use from the .obsm.
@@ -141,15 +35,9 @@ To help asses the number of clusters you can use **KMeansTuning** function.
  Nothing. To the FlowCytometryExperiment object provided, clusters identities are added to the .obs[key_added] and information of the algorithm if included in .uns[key_added].
 """
     function kmeans!(fct::FlowCytometryExperiment;
-                        n_clusters::Int = 2, 
-                        n_init::Int = 10, 
-                        max_iter::Int = 300, 
-                        tol::Real = 0.0001, 
-                        verbose::Int = 0, 
-                        random_state::Union{Nothing,Int} = nothing, 
-                        copy_x::Bool = true, 
-                        algorithm::String = "auto", 
-                        init::String = "k-means++",
+                        k::Int = 2, 
+                        metric = Distances.SqEuclidean(0.0),
+                        init::Symbol = :kmpp,
                         key_added::String = "kmeans",
                         key_obsm::Union{Nothing,String} = nothing,
                         n_components::Union{Nothing,Int} = nothing,
@@ -177,24 +65,17 @@ To help asses the number of clusters you can use **KMeansTuning** function.
         end
         
         model = kmeans_(
-                    n_clusters=n_clusters, 
-                    n_init=n_init, 
-                    max_iter=max_iter, 
-                    tol=tol, 
-                    verbose=verbose, 
-                    random_state=random_state, 
-                    copy_x=copy_x, 
-                    algorithm=algorithm, 
+                    k=k, 
+                    metric=metric, 
                     init=init
                     )
         mach = machine(model,X,scitype_check_level=0)
         fit!(mach,verbosity=0)
-        fct.obs[:,key_added] = predict(mach)
+        fct.obs[:,key_added] = mach.report[1]
 
         fct.uns[key_added] = Dict([
                                 "params"=>Dict([i=>j for (i,j) in zip(keys(params(mach)),params(mach))]),
-                                "cluster_centers"=>fitted_params(mach)[1],
-                                "inertia"=>fitted_params(mach)[3],
+                                "cluster_centers"=>permutedims(fitted_params(mach)[1])
                                 ])
         
         return
@@ -202,7 +83,7 @@ To help asses the number of clusters you can use **KMeansTuning** function.
 
 """
     function agglomerative!(fct::FlowCytometryExperiment;
-        n_clusters::Int = 2, 
+        k::Int = 2, 
         affinity::String = "euclidean", 
         compute_full_tree::Union{String,Bool} = "auto", 
         linkage::String = "ward", 
@@ -219,11 +100,11 @@ Function that clusters the data using the AgglomerativeClustering algorithm.
  - **fct::FlowCytometryExperiment** FlowCytometryExperiment to cluster the data.
 
 **Keyword Arguments**
- - **n_clusters::Int = 2** Number of clusters to parition the data.
+ - **k::Int = 2** Number of clusters to parition the data.
  - **affinity::String = "euclidean"** Metric to use for partitioning the data.
- - **compute_full_tree::Union{String,Bool} = "auto"** Stop early the construction of the tree at n_clusters. This is useful to decrease computation time if the number of clusters is not small compared to the number of samples.
+ - **compute_full_tree::Union{String,Bool} = "auto"** Stop early the construction of the tree at k. This is useful to decrease computation time if the number of clusters is not small compared to the number of samples.
  - **linkage::String = "ward"** Linkage criterion.
- - **distance_threshold::Union{Nothing,Real} = nothing** The linkage distance threshold above which, clusters will not be merged. If not None, n_clusters must be None and compute_full_tree must be True.
+ - **distance_threshold::Union{Nothing,Real} = nothing** The linkage distance threshold above which, clusters will not be merged. If not None, k must be None and compute_full_tree must be True.
  - **key_added::String = "KMeans"** Key to be added to object.
  - **key_obsm::Union{Nothing,String} = nothing** Matrix in .obsm to use for the clustering. Only key_obsm or key_used_channels can be specified.
  - **n_components::Union{Nothing,Int} = nothing** Number of components to use from the .obsm.
@@ -233,7 +114,7 @@ Function that clusters the data using the AgglomerativeClustering algorithm.
  Nothing. To the FlowCytometryExperiment object provided, clusters identities are added to the .obs[key_added] and information of the algorithm if included in .uns[key_added].
 """
     function agglomerative!(fct::FlowCytometryExperiment;
-                            n_clusters = 2, 
+                            k = 2, 
                             affinity = "euclidean", 
                             memory = nothing, 
                             connectivity = nothing, 
@@ -267,7 +148,7 @@ Function that clusters the data using the AgglomerativeClustering algorithm.
         end
         
         model = agglomerative_(
-                    n_clusters = n_clusters, 
+                    k = k, 
                     affinity = affinity, 
                     memory = memory, 
                     connectivity = connectivity, 
@@ -281,7 +162,7 @@ Function that clusters the data using the AgglomerativeClustering algorithm.
 
         fct.uns[key_added] = Dict([
                                 "params"=>Dict([i=>j for (i,j) in zip(keys(params(mach)),params(mach))]),
-                                "n_clusters"=>fitted_params(mach)[1],
+                                "k"=>fitted_params(mach)[1],
                                 "n_leaves"=>fitted_params(mach)[3],
                                 "n_connected_components"=>fitted_params(mach)[4],
                                 "children"=>fitted_params(mach)[5],
@@ -327,7 +208,7 @@ Function that clusters the data using the AgglomerativeClustering algorithm.
 
 """
     function gaussianMixture!(fct::FlowCytometryExperiment;
-        n_clusters::Int,
+        k::Int,
         initialization::Union{String,Matrix} = "kmeans",
         maximumSteps::Int = 10000,
         key_added::String = "gaussianMixture",
@@ -342,8 +223,8 @@ Clustering with multivariate gaussian distributions.
  - **fct::FlowCytometryExperiment** FlowCytometryExperiment to cluster the data.
 
 **Keyword Arguments**
- - **n_clusters::Int** Number of clusters of the model.
- - **initialization::Union{String,Matrix} = "kmeans"** Initialization. Select between "kmeans", "random" or give a matrix of (n_clusters,dimensions)
+ - **k::Int** Number of clusters of the model.
+ - **initialization::Union{String,Matrix} = "kmeans"** Initialization. Select between "kmeans", "random" or give a matrix of (k,dimensions)
  - **maximumSteps::Int = 10000** Number of maximum of steps before stopping the algorithm.
  - **key_added::String = "KMeans"** Key to be added to object.
  - **key_obsm::Union{Nothing,String} = nothing** Matrix in .obsm to use for the clustering. Only key_obsm or key_used_channels can be specified.
@@ -354,7 +235,7 @@ Clustering with multivariate gaussian distributions.
  Nothing. To the FlowCytometryExperiment object provided, clusters identities are added to the .obs[key_added] and information of the algorithm if included in .uns[key_added].
 """
     function gaussianMixture!(fct::FlowCytometryExperiment;
-                                n_clusters::Int,
+                                k::Int,
                                 initialization::Union{String,Matrix} = "kmeans",
                                 maximumSteps::Int = 10000,
                                 key_added::String = "gaussianMixture",
@@ -386,22 +267,22 @@ Clustering with multivariate gaussian distributions.
 
         #Check shape of initial centers
         if typeof(initialization) == Matrix
-            if size(initialisation) != (n_clusters,size(X)[2])
-                error("If initialization is a matrix of given initial positions, the dimensions must be the same size as (n_clusters,variables).")
+            if size(initialisation) != (k,size(X)[2])
+                error("If initialization is a matrix of given initial positions, the dimensions must be the same size as (k,variables).")
             end
         end
 
         nCells = size(X)[1]
 
         #Initialization centers
-        centers = zeros(n_clusters,size(X)[2])
+        centers = zeros(k,size(X)[2])
         if initialization == "kmeans"
-            model = kmeans_(n_clusters=n_clusters)
+            model = kmeans_(k=k)
             mach = machine(model,X,scitype_check_level=0)
             fit!(mach,verbosity=0)
-            centers = fitted_params(mach)[1]
+            centers = permutedims(fitted_params(mach)[1])
         elseif initialization == "random"
-            centers = rand(n_clusters,size(X)[2])
+            centers = rand(k,size(X)[2])
             centers .= centers .* (maximum(X,dims=1).-minimum(X,dims=1)) .-minimum(X,dims=1)
         elseif typeof(initialization) == Matrix
             centers .= initialization
@@ -412,14 +293,14 @@ Clustering with multivariate gaussian distributions.
         identities = closerPoints(X,centers)
         #Initialization of covariances
         covariances = []
-        for id in 1:n_clusters
+        for id in 1:k
             push!(covariances,cov(@views X[identities.==id,:]))
         end
         #Initialization of weights
-        weights = [sum(identities.==id)/nCells for id in 1:n_clusters]
+        weights = [sum(identities.==id)/nCells for id in 1:k]
 
         #Loop
-        p = zeros(nCells,n_clusters)
+        p = zeros(nCells,k)
         steps = 0
         identitiesNew = fill(0,nCells)
         while !all(identities.==identitiesNew) && steps < maximumSteps
@@ -428,7 +309,7 @@ Clustering with multivariate gaussian distributions.
             gmloglikelihood!(p,X,centers,covariances,weights)
             identitiesNew .= Matrix([i[2] for i in argmax(p,dims=2)])[:,1]
             #Expectation step
-            for i in 1:n_clusters
+            for i in 1:k
                 ids = identitiesNew.==i
 
                 weights[i] = sum(ids)/nCells
@@ -441,7 +322,7 @@ Clustering with multivariate gaussian distributions.
         end
 
         fct.uns[key_added] = Dict([
-            "n_clusters" => n_clusters,
+            "k" => k,
             "maximumSteps" => maximumSteps,
             "stepsBeforeConvergence" => steps,
             "initialization" => initialization,
