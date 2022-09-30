@@ -1,0 +1,133 @@
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="UTF-8"/><meta name="viewport" content="width=device-width, initial-scale=1.0"/><title>Usage · FlowCytometry.jl</title><script data-outdated-warner src="../assets/warner.js"></script><link href="https://cdnjs.cloudflare.com/ajax/libs/lato-font/3.0.0/css/lato-font.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/juliamono/0.045/juliamono.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/fontawesome.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/solid.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/brands.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.13.24/katex.min.css" rel="stylesheet" type="text/css"/><script>documenterBaseURL=".."</script><script src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.3.6/require.min.js" data-main="../assets/documenter.js"></script><script src="../siteinfo.js"></script><script src="../../versions.js"></script><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../assets/themes/documenter-dark.css" data-theme-name="documenter-dark" data-theme-primary-dark/><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../assets/themes/documenter-light.css" data-theme-name="documenter-light" data-theme-primary/><script src="../assets/themeswap.js"></script></head><body><div id="documenter"><nav class="docs-sidebar"><a class="docs-logo" href="../index.html"><img src="../assets/logo.png" alt="FlowCytometry.jl logo"/></a><div class="docs-package-name"><span class="docs-autofit"><a href="../index.html">FlowCytometry.jl</a></span></div><form class="docs-search" action="../search.html"><input class="docs-search-query" id="documenter-search-query" name="q" type="text" placeholder="Search docs"/></form><ul class="docs-menu"><li><a class="tocitem" href="../index.html">Home</a></li><li class="is-active"><a class="tocitem" href="Usage.html">Usage</a><ul class="internal"><li><a class="tocitem" href="#Basics-of-the-FlowCytometry.jl-structures"><span>Basics of the FlowCytometry.jl structures</span></a></li><li><a class="tocitem" href="#Gating"><span>Gating</span></a></li><li><a class="tocitem" href="#Compensation"><span>Compensation</span></a></li><li><a class="tocitem" href="#Dimensionality-reduction"><span>Dimensionality reduction</span></a></li><li><a class="tocitem" href="#Clustering"><span>Clustering</span></a></li></ul></li><li><a class="tocitem" href="../API.html">API</a></li></ul><div class="docs-version-selector field has-addons"><div class="control"><span class="docs-label button is-static is-size-7">Version</span></div><div class="docs-selector control is-expanded"><div class="select is-fullwidth is-size-7"><select id="documenter-version-selector"></select></div></div></div></nav><div class="docs-main"><header class="docs-navbar"><nav class="breadcrumb"><ul class="is-hidden-mobile"><li class="is-active"><a href="Usage.html">Usage</a></li></ul><ul class="is-hidden-tablet"><li class="is-active"><a href="Usage.html">Usage</a></li></ul></nav><div class="docs-right"><a class="docs-edit-link" href="https://github.com/gatocor/FlowCytometry.jl/blob/master/docs/src/Usage/Usage.md" title="Edit on GitHub"><span class="docs-icon fab"></span><span class="docs-label is-hidden-touch">Edit on GitHub</span></a><a class="docs-settings-button fas fa-cog" id="documenter-settings-button" href="#" title="Settings"></a><a class="docs-sidebar-button fa fa-bars is-hidden-desktop" id="documenter-sidebar-button" href="#"></a></div></header><article class="content" id="documenter-page"><h1 id="Usage"><a class="docs-heading-anchor" href="#Usage">Usage</a><a id="Usage-1"></a><a class="docs-heading-anchor-permalink" href="#Usage" title="Permalink"></a></h1><p>We are going over the main functionality of the FlowCytometry package.</p><p>For this tutorial you will need to have installed the following packages:</p><ul><li>FlowCytometry </li><li>Plots for the visualization of the results</li><li>CSV for uploading files</li><li>DataFrames as storage </li></ul><p>First we upload the required packages.</p><pre><code class="language-julia hljs">using FlowCytometry
+using Plots
+using CSV
+using DataFrames</code></pre><p>&lt;div style=&quot;padding: 1em; background-color: #f8d6da; border: 1px solid #f5c6cb; font-weight: bold;&quot;&gt; &lt;p&gt;The WebIO Jupyter extension was not detected. See the &lt;a href=&quot;https://juliagizmos.github.io/WebIO.jl/latest/providers/ijulia/&quot; target=&quot;_blank&quot;&gt;     WebIO Jupyter integration documentation &lt;/a&gt; for more information. &lt;/div&gt;</p><h2 id="Basics-of-the-FlowCytometry.jl-structures"><a class="docs-heading-anchor" href="#Basics-of-the-FlowCytometry.jl-structures">Basics of the FlowCytometry.jl structures</a><a id="Basics-of-the-FlowCytometry.jl-structures-1"></a><a class="docs-heading-anchor-permalink" href="#Basics-of-the-FlowCytometry.jl-structures" title="Permalink"></a></h2><p>The Flow cytometry package works around a few structures that help with the upload and manipulation of flow cytometry data.</p><p>The basic structure is <strong>FlowCytometryExperiment</strong>. The structure follows a very similar struture to the AnnData object for scRNA seq analysis of <a href="https://scanpy.readthedocs.io/en/latest/usage-principles.html#anndata">Scanpy</a>.</p><h3 id="Loading"><a class="docs-heading-anchor" href="#Loading">Loading</a><a id="Loading-1"></a><a class="docs-heading-anchor-permalink" href="#Loading" title="Permalink"></a></h3><p>We can construct it manually starting from a measures matrix. Let&#39;s make a initialization of experiment with 100 cells and 10 channels.</p><pre><code class="language-julia hljs">fcs = FlowCytometryExperiment(rand(100,10));</code></pre><p>Alternatively, we can directly load a fcs experiment.</p><pre><code class="language-julia hljs">fcs = loadFCExperiment(&quot;FlowRepository_FR-FCM-Z2SS_files/Compensation Controls_APC Stained Control_006.fcs&quot;);</code></pre><h3 id="Accesing-the-properties"><a class="docs-heading-anchor" href="#Accesing-the-properties">Accesing the properties</a><a id="Accesing-the-properties-1"></a><a class="docs-heading-anchor-permalink" href="#Accesing-the-properties" title="Permalink"></a></h3><p>The structure contains several properties useful for the analysis.</p><ul><li><strong>X</strong> Matrix of Cells X Channel of the experiment.</li><li><strong>obs</strong> Dataframe with all the metainformation of the cells</li><li><strong>var</strong> Dataframe with all the metainformation of the channels</li><li><strong>obsm</strong> Dictionary containing transformed matrices of the original data.</li><li><strong>layers</strong> Dictionary containing Cells X Channel matrices of data that are required to control (e.g. Raw matrix).</li><li><strong>gates</strong> List of Gate and Gate set objects</li><li><strong>uns</strong> Dictionary contining all the metainformation of algorithms applied to the data.</li></ul><p>The data uploaded before contains for now a matrix with 5000 cells and 35 channels.</p><pre><code class="language-julia hljs">fcs.X</code></pre><pre><code class="nohighlight hljs">5000×35 Matrix{Float64}:
+ 2303.74      416.599   1283.72    …  164.319   112.581     806.962
+   74.9271    118.738     38.9001     103.387    43.4448     31.328
+   -8.80664    37.3513    69.7797      53.6129  -12.1771     16.3808
+   13.1381     74.3996   117.378      113.407    58.6642    109.884
+   61.805     154.62      83.2257     151.944    61.3532     92.8747
+  120.452     149.492    118.274   …  126.721    28.8629     98.2071
+   47.0315     90.03      65.6665      59.3534   40.6711     45.4934
+ 3250.81      510.924   1784.68        83.2978  149.613    1271.07
+  129.82      171.005    104.946      218.265    89.9069    138.593
+ 4507.53      762.57    2983.45       151.153   175.381    1292.75
+   44.5258     98.8863    90.7532  …   96.0772    7.18318    72.9165
+ 3067.69      499.695   1977.24       184.278   133.984     779.138
+  106.038      73.6164    72.8483      91.8869   30.9219     83.9338
+    ⋮                              ⋱                       
+ 4526.39      922.335   3162.07       228.424   163.164    1784.55
+ 3204.06      453.676   1997.38       117.517    92.6973    995.466
+ 3541.12      521.124   2009.79    …   96.7421  142.616    1033.12
+  110.326      96.0595    92.4247     104.981    64.8256     76.8489
+ 4377.92      790.997   3020.12       156.357   163.928    1571.42
+  162.128     197.74     165.195      135.382    49.7978    116.674
+ 1854.82     1089.18    1323.15       522.704   530.454    1234.77
+ 4850.33     1584.76    3109.43    …  703.122   539.034    1849.48
+   62.8767    123.013    162.019       88.8254   57.7122     17.3599
+  133.58      103.552     55.547       87.4273   24.1988    263.921
+  -28.8662    110.622    198.375       68.2685   25.5013     98.1429
+    4.39487    97.8623   130.614       88.426    38.1077     31.6543</code></pre><p>The experiment metainformation has been stored in <code>.uns[&quot;ExperimentInformation&quot;]</code>.</p><pre><code class="language-julia hljs">fcs.uns[&quot;ExperimentInformation&quot;]</code></pre><pre><code class="nohighlight hljs">Dict{String, String} with 370 entries:
+  &quot;\$P7G&quot;            =&gt; &quot;1.0&quot;
+  &quot;\$P22E&quot;           =&gt; &quot;0,0&quot;
+  &quot;\$P26E&quot;           =&gt; &quot;0,0&quot;
+  &quot;CREATOR&quot;          =&gt; &quot;BD FACSDiva Software Version 8.0.1&quot;
+  &quot;\$P34R&quot;           =&gt; &quot;262144&quot;
+  &quot;\$P27E&quot;           =&gt; &quot;0,0&quot;
+  &quot;\$FIL&quot;            =&gt; &quot;Compensation Controls_APC Stained Control_006.fcs&quot;
+  &quot;\$P2R&quot;            =&gt; &quot;262144&quot;
+  &quot;\$P11V&quot;           =&gt; &quot;495&quot;
+  &quot;\$P25R&quot;           =&gt; &quot;262144&quot;
+  &quot;\$P2G&quot;            =&gt; &quot;1.0&quot;
+  &quot;P5BS&quot;             =&gt; &quot;0&quot;
+  &quot;P2DISPLAY&quot;        =&gt; &quot;LIN&quot;
+  &quot;LASER5DELAY&quot;      =&gt; &quot;31.30&quot;
+  &quot;P29DISPLAY&quot;       =&gt; &quot;LOG&quot;
+  &quot;P32DISPLAY&quot;       =&gt; &quot;LOG&quot;
+  &quot;P3MS&quot;             =&gt; &quot;0&quot;
+  &quot;\$P24R&quot;           =&gt; &quot;262144&quot;
+  &quot;\$P9G&quot;            =&gt; &quot;1.0&quot;
+  &quot;\$P14B&quot;           =&gt; &quot;32&quot;
+  &quot;P27DISPLAY&quot;       =&gt; &quot;LOG&quot;
+  &quot;EXPORT USER NAME&quot; =&gt; &quot;CarlyWhyte&quot;
+  &quot;\$P10B&quot;           =&gt; &quot;32&quot;
+  &quot;\$P9N&quot;            =&gt; &quot;BB660-P-A&quot;
+  &quot;\$P3E&quot;            =&gt; &quot;0,0&quot;
+  ⋮                  =&gt; ⋮</code></pre><p>And we have the name of the channels in <code>.channels</code>.</p><pre><code class="language-julia hljs">fcs.channels</code></pre><pre><code class="nohighlight hljs">35-element Vector{String}:
+ &quot;PE-Cy5.5-A&quot;
+ &quot;BB660-P-A&quot;
+ &quot;BV650-A&quot;
+ &quot;BUV615-P-A&quot;
+ &quot;BYG790-A&quot;
+ &quot;SSC-H&quot;
+ &quot;BV786-A&quot;
+ &quot;SSC-W&quot;
+ &quot;BV570-A&quot;
+ &quot;APC-A&quot;
+ &quot;BV421-A&quot;
+ &quot;PE-CF594-A&quot;
+ &quot;BB700-P-A&quot;
+ ⋮
+ &quot;BYG670-A&quot;
+ &quot;BUV661-A&quot;
+ &quot;BV750-P-A&quot;
+ &quot;FITC-A&quot;
+ &quot;APC-R700-A&quot;
+ &quot;BB630-A&quot;
+ &quot;BUV496-A&quot;
+ &quot;BUV737-A&quot;
+ &quot;BYG584-A&quot;
+ &quot;BUV563-A&quot;
+ &quot;BB790-P-A&quot;
+ &quot;BV711-A&quot;</code></pre><p>It is useful to note than the channels can be accessed directly by calling directly to the FlowCytometryExperiment object as <code>fcs[channel_of_interest]</code>. Let&#39;s use this property for ploting a scatterplot of two channels.</p><pre><code class="language-julia hljs">scatter(fcs[&quot;APC-A&quot;],fcs[&quot;APC-R700-A&quot;],label=&quot;cells&quot;,xlabel=&quot;APC-R700-A&quot;,ylabel=&quot;APC-A&quot;,title=&quot;Control experiment APC Dye&quot;)</code></pre><p><img src="output_14_0.svg" alt="svg"/></p><p>We can already see from this data the spillover effect of APC-A to APC-R700-A.</p><h2 id="Gating"><a class="docs-heading-anchor" href="#Gating">Gating</a><a id="Gating-1"></a><a class="docs-heading-anchor-permalink" href="#Gating" title="Permalink"></a></h2><p>Flow compensation usually requires of quality control of the cells and measures change in proportion of cells between experimennts to see if there is changes in the number of cells present in specific regions of the channel space.</p><p>We can define gates for our experiment in several ways.</p><h3 id="Manual-gating"><a class="docs-heading-anchor" href="#Manual-gating">Manual gating</a><a id="Manual-gating-1"></a><a class="docs-heading-anchor-permalink" href="#Manual-gating" title="Permalink"></a></h3><p>We can define a manual gates by calling the function <code>Gating.manualGating!</code>. This will start an app that can be accessed in any browser by writing <code>localhost::channel</code>, for the channel prompted by the function. When desiring to stop adding gates, you will have just to kill the app with <code>ctr+C</code> or similar and the gates will be added to the <code>FlowCytometryExperiment</code> object.</p><pre><code class="language-julia hljs">Gating.manualGating!(fcs)</code></pre><pre><code class="nohighlight hljs">┌ Info: Listening on: 0.0.0.0:8050
+└ @ HTTP.Servers /home/gabriel/.julia/packages/HTTP/aTjcj/src/Servers.jl:268</code></pre><p>When calling the function, in the browser you will see a page like this:</p><p><img src="ManualGating.png" alt/></p><h2 id="Compensation"><a class="docs-heading-anchor" href="#Compensation">Compensation</a><a id="Compensation-1"></a><a class="docs-heading-anchor-permalink" href="#Compensation" title="Permalink"></a></h2><p>Most part of flow cytometry experiments use several signaling channels. Some of the most common experimental as flow cytometry or spectral cytometry suffer from spillover/mixing of the information among the channels. To correct this behavior and having uncoupled signals, one-fluorophore control experiments are performed in order to compute what is called the compensation matrice to uncouple the channels.</p><h3 id="Loading-control-experiments"><a class="docs-heading-anchor" href="#Loading-control-experiments">Loading control experiments</a><a id="Loading-control-experiments-1"></a><a class="docs-heading-anchor-permalink" href="#Loading-control-experiments" title="Permalink"></a></h3><p>We can upload the control experiments in a special structure named <code>FlowCytometryControl</code>, that is more less a container of diferent <code>FlowCytometryExperiment</code>. Each control experiment is assigned a channel that corresponds to the maximum peack of its spectrum. This is very important to when computing the compensation matrix. The best way of uploading the data is by assigning the different control files to the according channels.</p><p>In this example we have a file that has already this assignation:</p><pre><code class="language-julia hljs">controls = CSV.read(&quot;FlowRepository_FR-FCM-Z2SS_files/attachments/fcs_control.csv&quot;,FlowCytometry.DataFrame)
+print(controls[1:5,:])</code></pre><pre><code class="nohighlight hljs">[1m5×4 DataFrame[0m
+[1m Row [0m│[1m filename                          [0m[1m dye        [0m[1m antigen    [0m[1m wavelength [0m
+[1m     [0m│[90m String                            [0m[90m String15   [0m[90m String15   [0m[90m Int64      [0m
+─────┼───────────────────────────────────────────────────────────────────────
+   1 │ Compensation Controls_APC Staine…  APC-A       CD4/CD8            660
+   2 │ Compensation Controls_APC-H7 Sta…  APC-H7-A    viability          785
+   3 │ Compensation Controls_APC-R700 S…  APC-R700-A  MHC-II             719
+   4 │ Compensation Controls_BB630 Stai…  BB630-A     CD3/Thy1.2         631
+   5 │ Compensation Controls_BB660-P St…  BB660-P-A   CD45.2/CD3         667</code></pre><p>We will construct a dictionary assigning file to channel.</p><pre><code class="language-julia hljs">fileChannelAssignation = Dict([string(&quot;FlowRepository_FR-FCM-Z2SS_files/&quot;,i)=&gt;String(j) for (i,j) in eachrow(controls[:,[&quot;filename&quot;,&quot;dye&quot;]])])</code></pre><pre><code class="nohighlight hljs">Dict{String, String} with 28 entries:
+  &quot;FlowRepository_FR-FCM-Z2SS_files/Compensation Controls_BYG79… =&gt; &quot;BYG790-A&quot;
+  &quot;FlowRepository_FR-FCM-Z2SS_files/Compensation Controls_BV786… =&gt; &quot;BV786-A&quot;
+  &quot;FlowRepository_FR-FCM-Z2SS_files/Compensation Controls_BUV80… =&gt; &quot;BUV805-A&quot;
+  &quot;FlowRepository_FR-FCM-Z2SS_files/Compensation Controls_BV605… =&gt; &quot;BV605-A&quot;
+  &quot;FlowRepository_FR-FCM-Z2SS_files/Compensation Controls_BV650… =&gt; &quot;BV650-A&quot;
+  &quot;FlowRepository_FR-FCM-Z2SS_files/Compensation Controls_BB660… =&gt; &quot;BB660-P-A&quot;
+  &quot;FlowRepository_FR-FCM-Z2SS_files/Compensation Controls_BB700… =&gt; &quot;BB700-P-A&quot;
+  &quot;FlowRepository_FR-FCM-Z2SS_files/Compensation Controls_BUV73… =&gt; &quot;BUV737-A&quot;
+  &quot;FlowRepository_FR-FCM-Z2SS_files/Compensation Controls_BV750… =&gt; &quot;BV750-P-A&quot;
+  &quot;FlowRepository_FR-FCM-Z2SS_files/Compensation Controls_APC S… =&gt; &quot;APC-A&quot;
+  &quot;FlowRepository_FR-FCM-Z2SS_files/Compensation Controls_BB790… =&gt; &quot;BB790-P-A&quot;
+  &quot;FlowRepository_FR-FCM-Z2SS_files/Compensation Controls_APC-R… =&gt; &quot;APC-R700-A&quot;
+  &quot;FlowRepository_FR-FCM-Z2SS_files/Compensation Controls_BV570… =&gt; &quot;BV570-A&quot;
+  &quot;FlowRepository_FR-FCM-Z2SS_files/Compensation Controls_PE-CF… =&gt; &quot;PE-CF594-A&quot;
+  &quot;FlowRepository_FR-FCM-Z2SS_files/Compensation Controls_FITC … =&gt; &quot;FITC-A&quot;
+  &quot;FlowRepository_FR-FCM-Z2SS_files/Compensation Controls_BV421… =&gt; &quot;BV421-A&quot;
+  &quot;FlowRepository_FR-FCM-Z2SS_files/Compensation Controls_BB630… =&gt; &quot;BB630-A&quot;
+  &quot;FlowRepository_FR-FCM-Z2SS_files/Compensation Controls_BYG58… =&gt; &quot;BYG584-A&quot;
+  &quot;FlowRepository_FR-FCM-Z2SS_files/Compensation Controls_BV480… =&gt; &quot;BV480-A&quot;
+  &quot;FlowRepository_FR-FCM-Z2SS_files/Compensation Controls_BUV49… =&gt; &quot;BUV496-A&quot;
+  &quot;FlowRepository_FR-FCM-Z2SS_files/Compensation Controls_BYG67… =&gt; &quot;BYG670-A&quot;
+  &quot;FlowRepository_FR-FCM-Z2SS_files/Compensation Controls_APC-H… =&gt; &quot;APC-H7-A&quot;
+  &quot;FlowRepository_FR-FCM-Z2SS_files/Compensation Controls_BUV61… =&gt; &quot;BUV615-P-A&quot;
+  &quot;FlowRepository_FR-FCM-Z2SS_files/Compensation Controls_BUV39… =&gt; &quot;BUV395-A&quot;
+  &quot;FlowRepository_FR-FCM-Z2SS_files/Compensation Controls_BV711… =&gt; &quot;BV711-A&quot;
+  ⋮                                                              =&gt; ⋮</code></pre><p>Now we can load the data.</p><pre><code class="language-julia hljs">fcsControl = loadFCControls(fileChannelAssignation);</code></pre><h3 id="Compute-compensation-matrix"><a class="docs-heading-anchor" href="#Compute-compensation-matrix">Compute compensation matrix</a><a id="Compute-compensation-matrix-1"></a><a class="docs-heading-anchor-permalink" href="#Compute-compensation-matrix" title="Permalink"></a></h3><p>With the data uploaded we can compute the compensation matrix from the <code>FlowCytometryControl</code> object.</p><pre><code class="language-julia hljs">Compensation.computeCompensationMatrix!(fcsControl)</code></pre><h3 id="Compensate-datasets"><a class="docs-heading-anchor" href="#Compensate-datasets">Compensate datasets</a><a id="Compensate-datasets-1"></a><a class="docs-heading-anchor-permalink" href="#Compensate-datasets" title="Permalink"></a></h3><p>With the compensated matrix computed, we can compensate the data. There are several methods of proceeding with the compensation.</p><ol><li>Compensate the control data</li></ol><pre><code class="language-julia hljs">experimentUncompensated = deepcopy(fcsControl.controls[&quot;APC-A&quot;]) #Make a copy before compensation
+Compensation.compensate!(fcsControl)</code></pre><p>Now we can visualize the results of the compensation and see that it has been correctly compensated.</p><pre><code class="language-julia hljs">experiment = fcsControl.controls[&quot;APC-A&quot;]
+scatter(experimentUncompensated[&quot;APC-A&quot;],experimentUncompensated[&quot;APC-R700-A&quot;],label=&quot;Not compensated&quot;)
+scatter!(experiment[&quot;APC-A&quot;],experiment[&quot;APC-R700-A&quot;],label=&quot;Compensated&quot;,xlabel=&quot;APC-A&quot;,ylabel=&quot;APC-R700-A&quot;,title=&quot;Control APC-A&quot;)
+xlabel!(&quot;APC-A&quot;)
+ylabel!(&quot;APC-R700-A&quot;)</code></pre><p><img src="output_32_0.svg" alt="svg"/></p><ol><li>Compensate the a <code>FlowCytometryExperiment</code> object with a <code>FlowCytometryControl</code> object</li></ol><pre><code class="language-julia hljs">fcsCopy = deepcopy(fcs)
+Compensation.compensate!(fcsCopy,control=fcsControl)</code></pre><ol><li>Assign the compensation matrix of a <code>FlowCytometryControl</code> to a <code>FlowCytometryExperiment</code> and then compensate.</li></ol><pre><code class="language-julia hljs">fcsCopy = deepcopy(fcs)
+Compensation.assignCompensation!(fcsCopy,control=fcsControl)
+Compensation.compensate!(fcsCopy)</code></pre><h2 id="Dimensionality-reduction"><a class="docs-heading-anchor" href="#Dimensionality-reduction">Dimensionality reduction</a><a id="Dimensionality-reduction-1"></a><a class="docs-heading-anchor-permalink" href="#Dimensionality-reduction" title="Permalink"></a></h2><p>In some datasets, the data is very high dimensional and visualizing all pairwise steps may not be possible or hard to interpret. For that reason, we can apply several dimensionality reduction methods to summarize the data.</p><p>Let&#39;s see that by constructing a toy dataset with two cell types. This data doesn&#39;t show well separated by any particular plot in of two of the variables. However, PCA analysis or UMAP projection are able to show the separation between the two clusters.</p><p>All this visualizations are stored as transformations of the original data in <code>.obms</code>.</p><pre><code class="language-julia hljs">X = [randn(1000,10); (randn(1000,10).+[0 2 0 2 0 2 0 2 0 0])];
+fcs = FlowCytometryExperiment(X);</code></pre><pre><code class="language-julia hljs">DimensionalityReduction.pca!(fcs)</code></pre><pre><code class="language-julia hljs">DimensionalityReduction.umap!(fcs)</code></pre><pre><code class="language-julia hljs">plot(scatter(fcs[&quot;1&quot;],fcs[&quot;2&quot;],title=&quot;Variables&quot;),
+    scatter(fcs.obsm[&quot;pca&quot;][:,1],fcs.obsm[&quot;pca&quot;][:,2],title=&quot;PC&quot;),
+    scatter(fcs.obsm[&quot;umap&quot;][:,1],fcs.obsm[&quot;umap&quot;][:,2],title=&quot;UMAP&quot;),
+    layout=(1,3),legend=false,size=[1200,400])</code></pre><p><img src="output_41_0.svg" alt="svg"/></p><h2 id="Clustering"><a class="docs-heading-anchor" href="#Clustering">Clustering</a><a id="Clustering-1"></a><a class="docs-heading-anchor-permalink" href="#Clustering" title="Permalink"></a></h2><p>One of the main uses of cytometry data is to cluster data by cell types. Several methods are already implemented in the package. Resuing the toy model before.</p><pre><code class="language-julia hljs">Clustering.kmeans!(fcs,n_components=2)</code></pre><pre><code class="language-julia hljs">Clustering.agglomerative!(fcs,n_components=2)</code></pre><pre><code class="language-julia hljs">plot(scatter(fcs.obsm[&quot;pca&quot;][:,1],fcs.obsm[&quot;pca&quot;][:,2],markercolor=Array(fcs.obs[:,&quot;kmeans&quot;]),title=&quot;KMeans&quot;),
+    scatter(fcs.obsm[&quot;pca&quot;][:,1],fcs.obsm[&quot;pca&quot;][:,2],markercolor=Array(fcs.obs[:,&quot;agglomerative&quot;]),title=&quot;Agglomerative&quot;),
+    layout=(1,2),legend=false,size=[800,400])</code></pre><p><img src="output_45_0.svg" alt="svg"/></p><pre><code class="language-julia hljs"></code></pre></article><nav class="docs-footer"><a class="docs-footer-prevpage" href="../index.html">« Home</a><a class="docs-footer-nextpage" href="../API.html">API »</a><div class="flexbox-break"></div><p class="footer-message">Powered by <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> and the <a href="https://julialang.org/">Julia Programming Language</a>.</p></nav></div><div class="modal" id="documenter-settings"><div class="modal-background"></div><div class="modal-card"><header class="modal-card-head"><p class="modal-card-title">Settings</p><button class="delete"></button></header><section class="modal-card-body"><p><label class="label">Theme</label><div class="select"><select id="documenter-themepicker"><option value="documenter-light">documenter-light</option><option value="documenter-dark">documenter-dark</option></select></div></p><hr/><p>This document was generated with <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> version 0.27.23 on <span class="colophon-date" title="Friday 30 September 2022 13:12">Friday 30 September 2022</span>. Using Julia version 1.6.7.</p></section><footer class="modal-card-foot"></footer></div></div></div></body></html>
