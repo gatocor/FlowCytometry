@@ -13,5 +13,5 @@ format = Documenter.HTML(prettyurls = false)
 )
 
 deploydocs(
-    repo = "github.com/dsb-lab/FlowCytometry.jl",
+    repo = "github.com/gatocor/FlowCytometry.jl",
 )
