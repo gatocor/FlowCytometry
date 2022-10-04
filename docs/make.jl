@@ -8,6 +8,7 @@ pages = [
     "Home" => "index.md",
     "Usage/Usage.md",
     "API.md",
+    "References.md",
 ],
 format = Documenter.HTML(prettyurls = false)
 )

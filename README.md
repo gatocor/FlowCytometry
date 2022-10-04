@@ -3,7 +3,7 @@
 
 [![Stable](https://img.shields.io/badge/docs-stable-blue.svg)](https://gatocor.github.io/FlowCytometry.jl/stable/)
 [![Dev](https://img.shields.io/badge/docs-dev-blue.svg)](https://gatocor.github.io/FlowCytometry.jl/dev/)
-# FlowCytometry.jl
+# FlowCytometry.jl 
 
 The package wants to offer a complete set of tools for the analysis of cytometry dataset in Julia. 
 
