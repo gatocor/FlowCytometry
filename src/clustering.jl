@@ -1,6 +1,6 @@
 module Clustering
 
-    using FlowCytometry, MLJ, Statistics, LinearAlgebra, Distances, Distributions
+    using FlowCytometry, MLJ, Statistics, LinearAlgebra, Distances, Distributions, Hungarian, ProgressMeter
 
     kmeans_ = MLJ.@load KMeans pkg=Clustering verbosity=0
     # agglomerative_ = MLJ.@load AgglomerativeClustering pkg=ScikitLearn verbosity=0
