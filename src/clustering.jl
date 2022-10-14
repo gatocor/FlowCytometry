@@ -188,11 +188,11 @@ Function that clusters the data using the AgglomerativeClustering algorithm.
         return Matrix([i[2] for i in argmin(d,dims=2)])[:,1]
     end
 
-    function gmloglikelihood!(p::Matrix,X::Matrix,centers::Matrix,covariances::Vector,weights::Vector)
+    function gmloglikelihood!(p::Matrix,X::Matrix,centers::Matrix,covariances::Array,weights::Vector)
 
         for j in 1:size(centers)[1]
             c = @views centers[j,:]
-            sigma = covariances[j]
+            sigma = covariances[j,:,:]
             sigmaInv = inv(sigma)
             determinant = abs(det(sigma))
             w = weights[j]
