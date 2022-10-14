@@ -1,6 +1,6 @@
 module Clustering
 
-    using FlowCytometry, MLJ, Statistics, LinearAlgebra, Distances
+    using FlowCytometry, MLJ, Statistics, LinearAlgebra, Distances, Distributions
 
     kmeans_ = MLJ.@load KMeans pkg=Clustering verbosity=0
     # agglomerative_ = MLJ.@load AgglomerativeClustering pkg=ScikitLearn verbosity=0
@@ -207,7 +207,7 @@ Function that clusters the data using the AgglomerativeClustering algorithm.
     end
 
 """
-    function gaussianMixture!(fct::FlowCytometryExperiment;
+    function gaussianMixtureEM!(fct::FlowCytometryExperiment;
         k::Int,
         initialization::Union{String,Matrix} = "kmeans",
         maximumSteps::Int = 10000,
@@ -217,7 +217,7 @@ Function that clusters the data using the AgglomerativeClustering algorithm.
         key_used_channels::Union{Nothing,String} = nothing                                
         )
 
-Clustering with multivariate gaussian distributions.
+Clustering with multivariate gaussian distributions using Expectation Maximization point estimates.
 
 **Arguments**
  - **fct::FlowCytometryExperiment** FlowCytometryExperiment to cluster the data.
@@ -234,11 +234,11 @@ Clustering with multivariate gaussian distributions.
  **Returns**
  Nothing. To the FlowCytometryExperiment object provided, clusters identities are added to the .obs[key_added] and information of the algorithm if included in .uns[key_added].
 """
-    function gaussianMixture!(fct::FlowCytometryExperiment;
+    function gaussianMixtureEM!(fct::FlowCytometryExperiment;
                                 k::Int,
                                 initialization::Union{String,Matrix} = "kmeans",
                                 maximumSteps::Int = 10000,
-                                key_added::String = "gaussianMixture",
+                                key_added::String = "gaussianMixtureEM",
                                 key_obsm::Union{Nothing,String} = nothing,
                                 n_components::Union{Nothing,Int} = nothing,
                                 key_used_channels::Union{Nothing,String} = nothing                                
@@ -333,6 +333,186 @@ Clustering with multivariate gaussian distributions.
 
         return
 
+    end
+
+    function gmIdentitiesProbability!(p::Matrix,X::Matrix,centers::Matrix,covariances::Array,weights::Vector)
+
+        gmloglikelihood!(p,X,centers,covariances,weights)
+
+        #Normalize taking the maximum
+        pmax = maximum(p,dims=2)
+        p .-= pmax
+
+        #Exp
+        p .= exp.(p)
+
+        #Normalize
+        p ./= sum(p,dims=2)
+
+        return
+    end
+
+    function relabeling(indicator,indicatorRef)
+        k = maximum(indicator)
+        #Initialize
+        C = zeros(k,k) #Missclassification matrix
+        #Create cost matrix
+        for i in 1:k
+            for j in 1:k
+                C[i,j] = sum((indicatorRef .== i) .& (indicator .!= j))
+            end
+        end
+        #Perform Hungarian Algorithm
+        assignement, cost = hungarian(C)
+        
+        return assignement
+    end
+
+    function gaussianMixture!(fct::FlowCytometryExperiment;
+                                k::Int,
+                                initialization::Union{String,Matrix} = "kmeans",
+                                ignoreSteps::Int = 1000, 
+                                saveSteps::Int = 1000,
+                                saveEach::Int = 10,
+                                key_added::String = "gaussianMixture",
+                                key_obsm::Union{Nothing,String} = nothing,
+                                n_components::Union{Nothing,Int} = nothing,
+                                key_used_channels::Union{Nothing,String} = nothing,
+                                verbose = false
+                                )
+        
+        ProgressMeter.ijulia_behavior(:clear)
+
+        if key_obsm !== nothing && key_used_channels !== nothing
+            error("key_obsm and key_used_channels cannot be specified at the same time.")
+        elseif key_obsm !== nothing
+            if n_components !== nothing
+                X = fct.obsm[key_obsm][:,1:n_components]
+            else
+                X = fct.obsm[key_obsm]
+            end
+        else
+            if key_used_channels !== nothing
+                channels = fct.var[:,key_used_channels]
+                if typeof(channels) != Vector{Bool}
+                    error("key_used_channels should be a column in var of Bool entries specifying which channels to use for clustering.")
+                end
+
+                X = fct.X[:,channels]
+            else
+                X = fct.X
+            end
+        end
+
+        #Check shape of initial centers
+        if typeof(initialization) == Matrix
+            if size(initialisation) != (k,size(X)[2])
+                error("If initialization is a matrix of given initial positions, the dimensions must be the same size as (k,variables).")
+            end
+        end
+
+        nCells = size(X)[1]
+        dims = size(X)[2]
+
+        #Initialization centers
+        centers = zeros(k,dims)
+        if initialization == "kmeans"
+            model = kmeans_(k=k)
+            mach = machine(model,X,scitype_check_level=0)
+            fit!(mach,verbosity=0)
+            centers = permutedims(fitted_params(mach)[1])
+        elseif initialization == "random"
+            centers = rand(k,dims)
+            centers .= centers .* (maximum(X,dims=1).-minimum(X,dims=1)) .-minimum(X,dims=1)
+        elseif typeof(initialization) == Matrix
+            centers .= initialization
+        else
+            error("initialization must be 'kmeans', 'random' or a matrix of specifying the centers of the gaussian.")
+        end
+        #Initialization of identities
+        identities = closerPoints(X,centers)
+        identitiesRef = copy(identities)
+        #Initialization of covariances
+        covariances = zeros(k,dims,dims)
+        for id in 1:k
+            votes = identities.==id
+            if sum(votes) > dims
+                covariances[id,:,:] .= cov(@views X[votes,:])
+            else
+                for i in 1:dims
+                    covariances[id,i,i] = 1
+                end
+            end
+        end
+        #Initialization of weights
+        weights = [sum(identities.==id)/nCells for id in 1:k]
+
+        #Loop
+        p = zeros(nCells,k)
+        steps = 0
+        votes = fill(0,k) #Auxiliar for sampling from the Dirichlet distributions
+        vote = fill(0,k) #Auxiliar for sampling from the Dirichlet distributions
+        nSave = sum((ignoreSteps:(ignoreSteps+saveSteps)).%saveEach .== 0)
+        saveMeans = zeros(nSave,k,dims)
+        saveCovariances = zeros(nSave,k,dims,dims)
+        saveWeights = zeros(nSave,k)
+        countSave = 0
+        itrs = 1:(ignoreSteps+saveSteps)
+        if verbose 
+            #itrs = ProgressBar(1:(ignoreSteps+saveSteps))
+            prog = Progress(length(itrs))
+        end 
+        for step in itrs
+            #Sample identities
+            gmIdentitiesProbability!(p,X,centers,covariances,weights)
+            for i in 1:nCells           
+                vote .= rand(Multinomial(1,p[i,:]))
+                votes .+= vote
+                identities[i] = findfirst(vote.==1)
+            end
+            #Sample parameters
+                #Sample weights
+            weights .= rand(Dirichlet(votes.+1))
+            for i in 1:k
+                ids = identities.==i
+
+                if votes[i] > dims #Check if we have enough statistical power to compute the wishart            
+                    # Sample covariances
+                    c = cov(X[ids,:])
+                    w = rand(InverseWishart(votes[i],votes[i].*c))
+                    covariances[i,:,:] .= w
+                    m = reshape(mean(X[ids,:],dims=1),dims)
+                    centers[i,:] .= rand(MultivariateNormal(m,w))
+                end
+            end
+
+            if step >= ignoreSteps && step%saveEach == 0
+                rel = relabeling(identities,identitiesRef)
+                countSave += 1
+                saveWeights[countSave,:] .= copy(weights)[rel]
+                saveCovariances[countSave,:,:,:] .= copy(covariances)[rel,:,:]
+                saveMeans[countSave,:,:] .= copy(centers)[rel,:]
+            end
+            
+            if verbose
+                next!(prog,showvalues=[(:iter,step)])
+            end
+
+            votes .= 0
+        end
+
+        fct.uns[key_added] = Dict([
+            "k" => k,
+            "initialization" => initialization,
+            "ignoreSteps" => ignoreSteps, 
+            "saveSteps" => saveSteps,
+            "saveEach" => saveEach,
+            "weights" => saveWeights,
+            "covariances" => saveCovariances,
+            "means" => saveMeans,
+        ])
+
+        return
     end
 
 end
