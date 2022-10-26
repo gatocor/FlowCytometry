@@ -241,8 +241,8 @@ end
     # @test_nowarn Clustering.agglomerative!(fcs, k=2)
     # @test begin Clustering.agglomerative!(fcs, k=2); all((fcs.obs[:,"kmeans"] .== fcs.obs[:,"kmeans"])[1:10]) && all((fcs.obs[:,"kmeans"] .== fcs.obs[end,"kmeans"])[11:end]) end
 # 
-    # @test_nowarn Clustering.gaussianMixture!(fcs, k=2)
-    # @test begin Clustering.gaussianMixture!(fcs, k=2); all((fcs.obs[:,"gaussianMixture"] .== fcs.obs[:,"gaussianMixture"])[1:10]) && all((fcs.obs[:,"gaussianMixture"] .== fcs.obs[end,"gaussianMixture"])[11:end]) end
+    # @test_nowarn Clustering.gaussianMixtureEM!(fcs, k=2)
+    # @test begin Clustering.gaussianMixtureEM!(fcs, k=2); all((fcs.obs[:,"gaussianMixture"] .== fcs.obs[:,"gaussianMixture"])[1:10]) && all((fcs.obs[:,"gaussianMixture"] .== fcs.obs[end,"gaussianMixture"])[11:end]) end
 # 
 # end
 

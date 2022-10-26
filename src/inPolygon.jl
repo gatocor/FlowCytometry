@@ -157,7 +157,7 @@ Function that given the entries of two channels and a gate checks which entries 
 **Returns**:
  Vector{Bool} with N entries. True entries are the ones inside the gate polygon.
 """
-function isInsideGate(x::Matrix{<:Real}, gate::FlowCytometryGate)
+function FlowCytometry.isInsideGate(x::Matrix{<:Real}, gate::FlowCytometryGate)
 
     s = size(x)
 
@@ -167,7 +167,7 @@ function isInsideGate(x::Matrix{<:Real}, gate::FlowCytometryGate)
 
     inGate = fill(false,s[1])
     for i in 1:s[1]
-        inGate[i] = isInsideGate((x[1],x[2]),gate)
+        inGate[i] = isInsideGate((x[i,1],x[i,2]),gate)
     end
 
     return inGate

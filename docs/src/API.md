@@ -32,6 +32,7 @@ loadH5fcs
 
 ```@docs
 Gating.isInsideGate
+Gating.filterByGate!
 Gating.manualGating!
 Gating.automaticQC!
 ```
@@ -57,4 +58,10 @@ Clustering.agglomerative! -->
 ```@docs
 Clustering.kmeans!
 Clustering.gaussianMixture!
+```
+
+## Ploting
+
+```@docs
+FCSPloting.plotQCSteps
 ```
