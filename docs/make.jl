@@ -6,7 +6,8 @@ using Documenter, FlowCytometry
 makedocs(sitename="FlowCytometry.jl",
 pages = [
     "Home" => "index.md",
-    "Usage/Usage.md",
+    "usage/usage.md",
+    "Examples" => ["gating/gating.md"],
     "API.md",
     "References.md",
 ],
