@@ -13,7 +13,7 @@ function loadFCExperiment(file::String)
 
     flow = FileIO.load(file)
 
-    channels = [i for i in keys(flow.data)]
+    channels = sort([i for i in keys(flow.data)])
     var = DataFrame(:channel=>channels)
     
     X = zeros(length(flow.data[channels[1]]),length(channels))
@@ -28,43 +28,12 @@ function loadFCExperiment(file::String)
 end
 
 """
-    function loadFCControls(folder::String; control_keyword::String="", inferChannel::Bool=true)
-
-Function to upload all the files in a folder corresponding to control files.
-
-**Arguments**
- - **folder::String** Address of folder where all the controls are.
-
-**Keyword Arguments**
- - **control_keyword::String=""** String by which to identify control experiment files.
-
-**Returns**
- - FlowCytometryControl object with all the controls uploaded. 
-"""
-function loadFCControls(folder::String; control_keyword::String="")
-
-    controllist = readdir(folder)
-    controllist = [i for i in controllist if occursin(".fcs",i)]
-    controllist = [i for i in controllist if occursin(control_keyword,i)]
-
-    object = FlowCytometryControl()
-
-    for control in controllist
-        object.controls[control] = loadFCExperiment(string(folder,"/",control))
-        object.channels = object.controls[control].channels
-    end
-
-    return object
-
-end
-
-"""
     function loadFCControls(dic::Dict{String,String})
 
 Function to upload all the files as given by a dictionary of control files and the corresponding channels.
 
 **Arguments**
- - **dic::Dict{String,String}** Disctionary with names of file and name adress assotiated with them.
+ - **dic::Dict{String,String}** Dictionary with `name_of_file`=>`name_of_controlled_channel`.
 
 **Returns**
  FlowCytometryControl object with all the controls uploaded.
@@ -73,9 +42,28 @@ function loadFCControls(dic::Dict{String,String})
 
     object = FlowCytometryControl()
 
+    channels = []
+    notCommonChannels = []
     for (file,control) in pairs(dic)
-        object.controls[control] = loadFCExperiment(file)
-        object.channels = object.controls[control].channels
+        fcs = loadFCExperiment(file)
+        if isempty(channels)
+            channels = copy(fcs.channels)
+        else
+            channels = sort(unique([channels;fcs.channels]))
+            notCommonChannels = sort(unique([notCommonChannels;[i for i in channels if !(i in fcs.channels)]]))
+        end
+        
+        if !(control in channels)
+            error("Control channel name ", control ," not found in channels. Closest candidates: ", [i for i in channels if occursin(uppercase(control), uppercase(i))])
+        end
+        
+        object.controls[control] = deepcopy(fcs)
+    end
+    
+    object.channels = channels
+    
+    if length(notCommonChannels) > 0
+       println("Not all control files have the same number of channels. These channels will not be compensated for controls that does not have them.\n Channels not present in all files: ",notCommonChannels) 
     end
 
     return object

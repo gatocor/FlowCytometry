@@ -1,8 +1,8 @@
-# Automatic gating
+# Automatic Quality Control
 
 In here we explain how to perform automatic gating inside the pipeline. We reproduce in this scrip Figure 1 from [Roca et all (2021)](https://www.nature.com/articles/s41467-021-23126-8).
 
-The data employed in this dataset is:
+The datasets employed in this example are:
 
  - [MM1](https://flowrepository.org/id/FR-FCM-Z2SS)
  - [HS1 & HS2](https://flowrepository.org/id/FR-FCM-Z2ST)
@@ -13,21 +13,6 @@ The data employed in this dataset is:
 using FlowCytometry
 using Plots
 ```
-
-    ┌ Info: Precompiling FlowCytometry [dda4a566-a714-4635-9e97-d7f3f719a55d]
-    └ @ Base loading.jl:1342
-    WARNING: Method definition compensate!(FlowCytometry.FlowCytometryExperiment) in module Compensation at /home/gabriel/Documents/FlowCytometry/src/compensation.jl:155 overwritten at /home/gabriel/Documents/FlowCytometry/src/compensation.jl:188.
-      ** incremental compilation may be fatally broken for this module **
-    
-    [33m[1m┌ [22m[39m[33m[1mWarning: [22m[39mReplacing docs for `FlowCytometry.Compensation.compensate! :: Tuple{FlowCytometry.FlowCytometryExperiment}` in module `FlowCytometry.Compensation`
-    [33m[1m└ [22m[39m[90m@ Base.Docs docs/Docs.jl:240[39m
-    [33m[1m┌ [22m[39m[33m[1mWarning: [22m[39mPackage FlowCytometry does not have Plots in its dependencies:
-    [33m[1m│ [22m[39m- If you have FlowCytometry checked out for development and have
-    [33m[1m│ [22m[39m  added Plots as a dependency but haven't updated your primary
-    [33m[1m│ [22m[39m  environment's manifest file, try `Pkg.resolve()`.
-    [33m[1m│ [22m[39m- Otherwise you may need to report an issue with FlowCytometry
-    [33m[1m└ [22m[39mLoading Plots into FlowCytometry from project dependency, future warnings for FlowCytometry are suppressed.
-
 
 
 <div style="padding: 1em; background-color: #f8d6da; border: 1px solid #f5c6cb; font-weight: bold;">
@@ -95,7 +80,7 @@ layout=(4,1), fmt=:png, size=(2000,1500)
 
 
     
-![png](roca_gating_files/roca_gating_7_0.png)
+![png](gating_files/gating_7_0.png)
     
 
 

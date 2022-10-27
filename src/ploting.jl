@@ -1,5 +1,5 @@
 module FCSPloting
-    using Plots, FlowCytometry
+    using Plots, FlowCytometry, Statistics
 
 """
     function plotQCSteps(fcs::FlowCytometryExperiment,key::String="automaticQC")
@@ -53,5 +53,118 @@ Function that returns the ploting steps from automaticQC.
         push!(figs,f)
         
         return plot(figs...,layout=(1,its+1))
+    end
+
+
+"""
+    function plotControlsCorrelations(fcsControl::FlowCytometryControl)
+
+Function that displays a heatmap with the correlation between controls and channels. It can work as a summary of spillover between data.
+   
+**Arguments:**
+ - **fcsControl::FlowCytometryControl** FlowCytometryControl object to compute the correlations between channels.
+
+**Return**
+ Heatmap figure with the control channels in rows and channels in columns.
+"""
+    function plotControlsCorrelations(fcsControl::FlowCytometryControl)
+        
+        X = zeros(length(fcsControl.controls),length(fcsControl.channels))
+        for (i,m) in enumerate(pairs(fcsControl.controls))
+            (channel2,fcs) = m
+            for (j,channel1) in enumerate(fcsControl.channels)
+               X[i,j] = cor([fcs[channel1] fcs[channel2]])[1,2]
+            end
+        end
+        
+        fig = heatmap(X,c=:redsblues)
+        #,
+        #    xticks=(1:length(fcsControl.channels),fcsControl.channels),
+        #    yticks=(1:length([i for i in keys(fcsControl.controls)]),[i for i in keys(fcsControl.controls)]),tickfontrotation=.5)
+        
+        fig = plot(fig)
+        
+        return fig
+    end
+
+
+    """
+    function plotControls(fcsControl::FlowCytometryControl,channels::Vector{Tuple{String,String}})
+
+Function that makes an scatterplot of the tuples of channels among controls and channels to see the spillover. If computeCompensationMatrix! has been computed, it also plots the correction after the control.
+
+**Arguments:**
+ - **fcsControl::FlowCytometryControl** FlowCytometryControl object where to check the spillover.
+ - **channels::Vector{Tuple{String,String}}** Vetor of Tuples of control sample and spilled channel that want to be seen.
+
+**Returns**
+List of figures with all the scatterplots between tuples. It can be ploted using plot(returned...,layout=(...))
+"""
+    function plotControls(fcsControl::FlowCytometryControl,channels::Vector{Tuple{String,String,String}})
+    
+        for tup in channels
+            (cont,channel1,channel2) = tup
+            if !(cont in keys(fcsControl.controls))
+                error("Control channel name ", channel1 ," not found in controls. Closest candidates: ", [keys(fcsControl.controls)])
+            elseif !(channel1 in fcsControl.controls[cont].channels)
+                error("Control channel name ", channel1 ," not found in controls. Closest candidates: ", [i for i in fcsControl.controls[cont].channels if occursin(uppercase(channel1), uppercase(i))])
+            elseif !(channel2 in fcsControl.controls[cont].channels)
+                error("Control channel name ", channel2 ," not found in controls. Closest candidates: ", [i for i in fcsControl.controls[cont].channels if occursin(uppercase(channel2), uppercase(i))])
+            end
+        end
+        
+        figs = []
+        for (cont,channel2,channel1) in channels
+            fcs = fcsControl.controls[cont]
+            subset = [i in fcs.channels for i in fcsControl.channels]
+            xlims = (sort(fcs[channel1])[round(Int,length(fcs[channel1])*.01)],sort(fcs[channel1])[round(Int,length(fcs[channel1])*.99)])
+            ylims = (sort(fcs[channel2])[round(Int,length(fcs[channel2])*.01)],sort(fcs[channel2])[round(Int,length(fcs[channel2])*.99)])
+                
+            if "compensation" in keys(fcsControl.uns) 
+                if !fcsControl.uns["compensation"]["compensated"]
+                    fig = scatter(fcs[channel1],fcs[channel2],markersize=1,xlabel=channel1,ylabel=channel2,markerstrokewidth=0,label="data") 
+                    P = fcsControl.uns["compensation"]["spilloverMatrix"]
+                    p1 = findfirst(fcs.channels .== channel1)
+                    p2 = findfirst(fcs.channels .== channel2)
+                    l = sort(copy(fcs.X[:,p2]))
+                    l2 = sort(l).*P[p2,p1]
+                    plot!(fig,l2,l,label="compensation trend")
+                    
+                    p1 = findfirst(fcs.channels.==channel1)
+                    p2 = findfirst(fcs.channels.==channel2)
+                    X = fcs.X*fcsControl.compensationMatrix.matrix[:,subset][subset,:]
+                    scatter!(fig,X[:,p1],X[:,p2],markersize=1,markerstrokewidth=0,label="compensated")
+    
+                    xlims = (sort(X[:,p1])[round(Int,length(fcs[channel1])*.01)],sort(fcs[channel1])[round(Int,length(fcs[channel1])*.99)])
+                    ylims = (sort(X[:,p2])[round(Int,length(fcs[channel2])*.01)],sort(fcs[channel2])[round(Int,length(fcs[channel2])*.99)])
+                    plot!(xlims=xlims,ylims=ylims)
+                else
+                    fig = scatter(fcs[channel1],fcs[channel2],markersize=1,xlabel=channel1,ylabel=channel2,markerstrokewidth=0,label="compensated") 
+                    P = fcsControl.uns["compensation"]["spilloverMatrix"]
+                    p1 = findfirst(fcs.channels .== channel1)
+                    p2 = findfirst(fcs.channels .== channel2)
+                    
+                    p1 = findfirst(fcs.channels.==channel1)
+                    p2 = findfirst(fcs.channels.==channel2)
+                    X = fcs.X*inv(fcsControl.compensationMatrix.matrix)[:,subset][subset,:]
+                    scatter!(fig,X[:,p1],X[:,p2],markersize=1,markerstrokewidth=0,label="data")                
+    
+                    l = sort(copy(X[:,p2]))
+                    l2 = sort(l).*P[p2,p1]
+                    plot!(fig,l2,l,label="compensation trend")
+    
+                    xlims = (sort(fcs[channel1])[round(Int,length(fcs[channel1])*.01)],sort(X[:,p1])[round(Int,length(fcs[channel1])*.99)])
+                    ylims = (sort(fcs[channel2])[round(Int,length(fcs[channel2])*.01)],sort(X[:,p2])[round(Int,length(fcs[channel2])*.99)])
+                    plot!(xlims=xlims,ylims=ylims)
+                end
+            else
+                fig = scatter(fcs[channel1],fcs[channel2],markersize=1,xlabel=channel1,ylabel=channel2,markerstrokewidth=0,label="data") 
+            end
+                
+            
+            push!(figs,fig)
+        end
+            
+        return figs
     end
 end

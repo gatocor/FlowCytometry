@@ -2,7 +2,7 @@ module FlowCytometry
 
 using DataFrames, FileIO, FCSFiles, MLJ, UMAP, HDF5
 
-export FlowCytometryExperiment, FlowCytometryControl, FlowCytometryGate
+export FlowCytometryExperiment, FlowCytometryControl, FlowCytometryGate, CompensationMatrix
 export renameControl!, checkControlNames
 export loadFCExperiment, loadFCControls, saveH5fcs, loadH5fcs
 export isInsideGate

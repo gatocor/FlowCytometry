@@ -42,7 +42,6 @@ Gating.automaticQC!
 ```@docs
 Compensation.computeCompensationMatrix!
 Compensation.compensate!
-Compensation.assignCompensation!
 ```
 
 ## Dimensionaity reduction
@@ -64,4 +63,6 @@ Clustering.gaussianMixture!
 
 ```@docs
 FCSPloting.plotQCSteps
+FCSPloting.plotControls
+FCSPloting.plotControlsCorrelations
 ```

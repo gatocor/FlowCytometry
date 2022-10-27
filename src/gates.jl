@@ -1,6 +1,6 @@
 module Gating
 
-    using Dash, DataFrames, JSON, PlotlyJS, FlowCytometry, Statistics
+    using Dash, DataFrames, JSON, PlotlyJS, FlowCytometry, Statistics, Random
 
 """
     function manualGating!(fcs::FlowCytometryExperiment;debug=false)
@@ -221,7 +221,8 @@ Launch an interactive page accessible at localhost to define gates manually.
         finalBandwidth=.1,
         heightFromMax=.3,
         subsample=2000,
-        keyAdded="automaticQC")
+        keyAdded="automaticQC",
+        seed = 0)
 
 Function that automatically detects the main peak corresponding to viable cells in a FCS/SSC scatterplot and adds a gate to the object. 
 The method follows the heuristics of [Roca et al](https://www.nature.com/articles/s41467-021-23126-8) with some small adaptations.
@@ -239,6 +240,7 @@ The method follows the heuristics of [Roca et al](https://www.nature.com/article
  - **heightFromMax=.3** In the last step, heigh at global maximum where to draw the contour of the QC region. Points with more probability that that will be used to make the QC gate.
  - **subsample=2000** Subsample of points used for density steps of the system. Set to 'nothing' for using all the points (this can be extremely slow), with relative low numbers of points the gate output are already very good.
  - **keyAdded="automaticQC"** Key added to uns and gate name.
+ - **seed = 0** Seed to make subsampling reproducible.
 
 **Returns**
 Nothing. A gate of automatic control is added to gates.
@@ -252,7 +254,9 @@ Nothing. A gate of automatic control is added to gates.
                         finalBandwidth=.1,
                         heightFromMax=.3,
                         subsample=2000,
-                        keyAdded="automaticQC")
+                        keyAdded="automaticQC",
+                        seed = 0)
+        Random.seed!(seed)
 
         #Check channels are present
         if !(channel1 in fcs.channels)
@@ -367,7 +371,11 @@ Nothing. A gate of automatic control is added to gates.
             @inbounds for i in 1:length(x)
                     dMax = (x[i]-x[maxMaximum])^2+(y[i]-y[maxMaximum])^2
                     @inbounds for j in othermaximums
-                    if ((x[i]-x[j])^2+(y[i]-y[j])^2) < dMax
+                    if ((x[i]-x[j])^2+(y[i]-y[j])^2) < dMax #Remove points that are closer to other maximums
+                        pointsFromMaximum[i] = false
+                    end
+                
+                    if !keep[i] #Remove points that are outside keep region
                         pointsFromMaximum[i] = false
                     end
                 end

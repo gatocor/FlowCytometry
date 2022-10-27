@@ -1,8 +1,9 @@
 module Compensation
 
-    using MLJ, FlowCytometry, LinearAlgebra
+    using MLJ, FlowCytometry, LinearAlgebra, MLJLinearModels, ProgressMeter, Random
     
     linearregressor_ = @load LinearRegressor pkg=MultivariateStats verbosity=0
+    huberregressor_ = @load HuberRegressor pkg=MLJLinearModels verbosity=0
 
 """
     function computeCompensationMatrix!(fcs::FlowCytometryControl; error::AbstractFloat = 10E-5, nMaxiterations::Int=10)
@@ -19,41 +20,61 @@ Compute the compensation matrix as proposed by [Roca et al](https://www.nature.c
 **Results**
  Nothing. Adds the compensation matrix to the FlowCytometryControl object.
 """
-    function computeCompensationMatrix!(fcs::FlowCytometryControl; error::AbstractFloat = 10E-5, nMaxIterations::Int=10)
+    function computeCompensationMatrix!(fcs::FlowCytometryControl; error::AbstractFloat = 10E-5, nMaxIterations::Int=10, channelsCompensate = nothing, subsample = 5000, seed = 0)
 
-        checkControlNames(fcs)
+#        checkControlNames(fcs)
+        if channelsCompensate === nothing
+            channelsCompensate == fcs.channels
+        else
+            l = [i for i in channelsCompensate if !(i in fcs.channels)]
+            if !isempty(l)
+                println(l," not found in channels of FlowCytometryControl object.")
+            
+                return
+            end
+        end
 
         if "compensation" in keys(fcs.uns)
-            if fcs.uns["compensation"]["compensated"]
-                error("FlowCytometryControl already compensated.")
+            if "compensated" in keys(fcs.uns["compensation"])
+                if fcs.uns["compensation"]["compensated"]
+                    println("FlowCytometryControl already compensated.")        
+                    
+                    return
+                end
             end
         end
 
         #Find channels
-        channels = fcs.controls[iterate(fcs.controls)[1][1]].var.channel
-        #controls
-        controls = [i for (i,_) in pairs(fcs.controls)]
+        channels = fcs.channels
 
-        #Initialize Sipillover matrix
+        #Initialize Spillover matrix
         S = Matrix{Float64}(I,length(channels),length(channels))
+    
+        fcs.uns["compensation"] = Dict{String,Any}()
 
         #Create regressor object
-        regressor = linearregressor_(bias=false)
+        regressor = huberregressor_(fit_intercept=false)
         #Make S(0)
-        for channel1 in controls
-            i = findfirst(channels .== channel1)
-            x = fcs.controls[channel1].X[:,i:i]
-            for channel2 in controls
-                j = findfirst(channels .== channel2)
-                if i != j
-                    y = fcs.controls[channel1].X[:,j]
-
-                    mach = machine(regressor,x,y,scitype_check_level=0)
-                    fit!(mach,verbosity=0)
-                    S[i,j] = mach.fitresult.sol_matrix[1] 
+        @showprogress 1 "Computing S(0)..." for (channel1,control) in pairs(fcs.controls)
+            Random.seed!(seed)
+            sub = shuffle(1:size(control.X)[1])[1:min(size(control.X)[1],subsample)]
+            i = findfirst(control.channels .== channel1)
+            iS = findfirst(channels .== channel1)
+            x = MLJ.table(fcs.controls[channel1].X[sub,i:i])
+            for channel2 in channelsCompensate
+                j = findfirst(control.channels .== channel2)
+                jS = findfirst(channels .== channel2)
+                if j !== nothing
+                    if i != j
+                        y = fcs.controls[channel1].X[sub,j]
+                        mach = machine(regressor,x,y,scitype_check_level=0)
+                        fit!(mach,verbosity=0)
+                        S[iS,jS] = mach.fitresult[1][1] 
+                    end
                 end
             end
         end
+        fcs.uns["compensation"]["spilloverMatrix"] = copy(S)
         #Make correction matrix
         Sinv = inv(S)
 
@@ -61,20 +82,27 @@ Compute the compensation matrix as proposed by [Roca et al](https://www.nature.c
         eMax = 0
         E = zeros(length(channels),length(channels))
         count = 0
-        for i in 1:1:nMaxIterations
+        @showprogress 1 "Refinement Iterations..." for i in 1:1:nMaxIterations
             E .= 0
-            for channel1 in controls
-                i = findfirst(channels .== channel1)
-                X = fcs.controls[channel1].X *Sinv
-                x = X[:,i:i]
-                for channel2 in controls
-                    j = findfirst(channels .== channel2)
-                    if i != j
-                        y = X[:,j]
+            for (channel1,control) in pairs(fcs.controls)
+                Random.seed!(seed)
+                sub = shuffle(1:size(control.X)[1])[1:min(size(control.X)[1],subsample)]
+                i = findfirst(control.channels .== channel1)
+                iS = findfirst(channels .== channel1)
+                channelsPresent = [i in control.channels for i in channels]
+                X = control.X * Sinv[:,channelsPresent][channelsPresent,:]
+                x = MLJ.table(X[sub,i:i])
+                for channel2 in channelsCompensate
+                    j = findfirst(control.channels .== channel2)
+                    jS = findfirst(channels .== channel2)
+                    if j !== nothing
+                        if i != j
+                            y = X[sub,j]
 
-                        mach = machine(regressor,x,y,scitype_check_level=0)
-                        fit!(mach,verbosity=0)
-                        E[i,j] = mach.fitresult.sol_matrix[1] 
+                            mach = machine(regressor,x,y,scitype_check_level=0)
+                            fit!(mach,verbosity=0)
+                            E[iS,jS] = mach.fitresult[1][1] 
+                        end
                     end
                 end
             end
@@ -96,12 +124,17 @@ Compute the compensation matrix as proposed by [Roca et al](https://www.nature.c
                 end
                 S[j,j] = 1
             end
+            fcs.uns["compensation"]["spilloverMatrix"] = copy(S)
             Sinv = inv(S)
             count += 1
         end
 
-        fcs.compensationMatrix = Sinv
-        fcs.uns["compensation"] = Dict{String,Any}("error"=>error,"errorMax"=>eMax,"nMaxIterations"=>Int(nMaxIterations),"convergedIterations"=>Int(count),"compensated"=>false)
+        fcs.compensationMatrix = CompensationMatrix(fcs.channels,Sinv)
+        fcs.uns["compensation"]["error"] = error
+        fcs.uns["compensation"]["errorMax"] = eMax
+        fcs.uns["compensation"]["nMaxIterations"] = Int(nMaxIterations)
+        fcs.uns["compensation"]["convergedIterations"] = Int(count)
+        fcs.uns["compensation"]["compensated"] = false
 
         return
 
@@ -122,14 +155,15 @@ Nothing
    
         if fcs.compensationMatrix !== nothing 
             if !(fcs.uns["compensation"]["compensated"])
-                for (control,_) in pairs(fcs.controls)
-                    fcs.controls[control].X = fcs.controls[control].X*fcs.compensationMatrix 
+                for (_,control) in pairs(fcs.controls)
+                    l = [i in control.channels for i in fcs.channels]
+                    control.X = control.X*fcs.compensationMatrix.matrix[:,l][l,:]
                 end
                 
                 fcs.uns["compensation"]["compensated"] = true
+            else
+                println("FlowCytometryControl object already compensated. Ignoring.")
             end
-        elseif fcs.uns["compensation"]["compensated"]
-            error("FlowCytometryControl object already compensated.")
         else
             error("computeCompensation! should have been called before compensating.") 
         end
@@ -139,20 +173,18 @@ Nothing
     end
     
 """
-    function compensate!(fcs::FlowCytometryExperiment;control::FlowCytometryControl)
+    function compensate!(fcs::FlowCytometryExperiment,compensation::CompensationMatrix)
 
 Compensate FlowCytometryExperiment experiment with the compensationMatrix from an FlowCytometryControl object.
 
 **Arguments**
  - **fcs::FlowCytometryExperiment** FlowCytometryExperiment object where to compute the compensation.
-
-**Keyword Arguments**
- - **control::FlowCytometryControl** FlowCytometryControl to use the compensationMatrix
+ - **compensation::CompensationMatrix** CompensationMatrix object
 
 **Returns**
-Nothing
+Nothing, compensated the matrix X from fcs.
 """
-    function compensate!(fcs::FlowCytometryExperiment;control::FlowCytometryControl)
+    function compensate!(fcs::FlowCytometryExperiment,compensation::CompensationMatrix)
         
         if "compensation" in keys(fcs.uns)
             compensated = true
@@ -161,11 +193,12 @@ Nothing
         end
         
         if control.compensationMatrix !== nothing && !compensated
-            fcs.X = fcs.X*control.compensationMatrix 
+            l = [i in fcs.channels for i in compensation.channels]
+            fcs.X = fcs.X*compensation.matrix[:,l][l,:] 
             
             fcs.uns["compensation"] = Dict("compensated"=>true)
         elseif compensated
-            error("FlowCytometryExperiment is already compensated.")
+            println("FlowCytometryExperiment is already compensated. Ignoring.")
         else
            error("computeCompensation! should have been called on the Control object before compensating.") 
         end
@@ -174,75 +207,4 @@ Nothing
         
     end
     
-"""
-    function compensate!(fcs::FlowCytometryExperiment)
-
-Compensate FlowCytometryExperiment experiment with an assigned compensationMatrix from a FlowCytometryControl object. See assignCompensation!.
-
-**Arguments**
- - **fcs::FlowCytometryExperiment** FlowCytometryExperiment object where to compute the compensation.
-
-**Returns**
-Nothing
-"""
-    function compensate!(fcs::FlowCytometryExperiment)
-       
-        if !("compensation" in keys(fcs.uns))
-            error("No compensation matrix in the object. Assign a compensation matrix before calling the function.")
-        elseif !(fcs.uns["compensation"]["compensated"])
-            fcs.X = fcs.X*fcs.uns["compensation"]["compensationMatrix"] 
-            
-            fcs.uns["compensation"]["compensated"] = true
-        elseif  fcs.uns["compensation"]["compensated"]
-            error("FlowCytometryExperiment is already compensated.")
-        else
-           error("computeCompensation! should have been called on the Control object before compensating.") 
-        end
-        
-        return
-    
-    end
-    
-"""
-    function assignCompensation!(fcs::FlowCytometryExperiment;control::FlowCytometryControl)
-
-Assign a compensation mattrix to a FlowCytometryExperiment experiment from the compensationMatrix of a FlowCytometryControl object.
-
-**Arguments**
- - **fcs::FlowCytometryExperiment** FlowCytometryExperiment object where to compute the compensation.
-
-**Keyword Arguments**
- - **control::FlowCytometryControl** FlowCytometryControl to use the compensationMatrix
-
-**Returns**
-Nothing
-"""
-    function assignCompensation!(fcs::FlowCytometryExperiment;control::FlowCytometryControl)
-        
-        if control.compensationMatrix !== nothing 
-            
-            if "compensation" in keys(fcs.uns)
-                if fcs.uns["compensation"]["compensated"]
-                    error("FlowCytometryExperiment is already compensated.")
-                end
-            end
-            
-            fcs.uns["compensation"] = deepcopy(control.uns["compensation"])
-            fcs.uns["compensation"]["compensationMatrix"] = control.compensationMatrix
-            fcs.uns["compensation"]["compensated"] = false
-            
-        elseif control.compensationMatrix === nothing
-
-            error("FlowCytometryControl control object does not have any compesation matrix computed. Compute it first before assignement.")
-
-        else
-
-            error("FlowCytometryExperiment already compensated, cannot assign a new compensation matrix.")
-        
-        end
-        
-        return
-        
-    end
-
 end

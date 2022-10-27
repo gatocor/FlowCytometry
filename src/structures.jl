@@ -1,4 +1,18 @@
 """
+    struct CompensationMatrix
+
+Structure that contains information from a compensation matrix.
+
+**Elements:**
+ - **channels::Array{String}* Channel names.
+ - **matrix::Matrix{Real}** matrix containing the compensation matrix.
+"""
+struct CompensationMatrix
+    channels::Array{String}
+    matrix::Matrix{<:AbstractFloat}
+end
+
+"""
     struct FlowCytometryGate
 
 Structure that contains information from a gating process of the data.
@@ -253,13 +267,13 @@ In order for the system to compute properly the spillover matrix, the names of t
 **Elements**:
  - **channels::Vector{String}** Name of the channels in the experiment.
  - **controls::Dict{String,FlowCytometryExperiment}** Dictionary of FlowCytometryExperiments containing the control experiments.
- - **compensationMatrix::Union{Nothing,Matrix{<:AbstractFloat}}** Spillover matrix inverted.
+ - **compensationMatrix::Union{Nothing,CompensationMatrix}** Spillover matrix inverted.
  - **uns::Dict{String,Any}** Dictionary where to store metainformation from spillover algorithm.
 """
 mutable struct FlowCytometryControl
     channels::Vector{String}
     controls::Dict{String,FlowCytometryExperiment}
-    compensationMatrix::Union{Nothing,Matrix{<:AbstractFloat}}
+    compensationMatrix::Union{Nothing,CompensationMatrix}
     uns::Dict{String,Any}
 
     function FlowCytometryControl()
