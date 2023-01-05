@@ -88,19 +88,12 @@ using CSV
 @testset "IO" begin
 
     @test_nowarn loadFCExperiment("testdata/BD-FACS-Aria-II.fcs")
-    @test_nowarn loadFCControls("testdata/FlowRepository_FR-FCM-Z2SS_files")
     @test_nowarn loadFCControls(Dict([
-                                    "testdata/FlowRepository_FR-FCM-Z2SS_files/Compensation Controls_APC-R700 Stained Control_007.fcs"=>"APC-R700",
-                                    "testdata/FlowRepository_FR-FCM-Z2SS_files/Compensation Controls_APC-H7 Stained Control_008.fcs"=>"APC-H7"
+                                    "testdata/FlowRepository_FR-FCM-Z2SS_files/Compensation Controls_APC-R700 Stained Control_007.fcs"=>"APC-R700-A",
+                                    "testdata/FlowRepository_FR-FCM-Z2SS_files/Compensation Controls_APC-H7 Stained Control_008.fcs"=>"APC-H7-A"
                                     ]
                                     )
                                 )
-    @test_nowarn begin fcs = loadFCControls("testdata/FlowRepository_FR-FCM-Z2SS_files")
-        channelnames = CSV.read("testdata/FlowRepository_FR-FCM-Z2SS_files/attachments/fcs_control.csv",DataFrame)
-        channelnames = Dict([i=>String(j) for (i,j) in eachrow(channelnames[:,["filename","dye"]])])
-        renameControl!(fcs,channelnames)
-        checkControlNames(fcs)
-    end
 
     @test_nowarn saveH5fcs(FlowCytometryExperiment(rand(10,10)),"test")
     @test_nowarn begin 

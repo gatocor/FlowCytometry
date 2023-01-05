@@ -10,10 +10,12 @@ Function that loads a ftc experiment into a FlowCytometryExperiment.
  FlowCytometryExperiment with the data from the uploaded file.
 """
 function loadFCExperiment(file::String)
-
+ 
     flow = FileIO.load(file)
 
-    channels = sort([i for i in keys(flow.data)])
+    n_params = parse(Int, flow.params["\$PAR"])
+    channels = sort([flow.params["\$P$(i)N"] for i in 1:n_params])
+
     var = DataFrame(:channel=>channels)
     
     X = zeros(length(flow.data[channels[1]]),length(channels))
